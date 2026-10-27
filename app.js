@@ -22,10 +22,12 @@ let currentUser = null;
 let activeVideo = null;
 let activeChatContact = null;
 let globalAllVideos = [];
+let globalAllPosts = [];
 let globalAllUsers = [];
 let unsubscribeChat = null;
 let editingVideoId = null;
 let activeShortForModal = null;
+let postImageBase64 = null;
 
 // --- Advanced Military-Grade XSS & Injection Protection Utility (Strict Sanitization Engine) ---
 function sanitizeHTML(str) {
@@ -42,7 +44,29 @@ function sanitizeHTML(str) {
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/eval\((.*?)\)/gi, '')
         .replace(/document\.cookie/gi, '')
-        .replace(/document\.domain/gi, '');
+        .replace(/document\.domain/gi, '')
+        .replace(/vbscript:/gi, '')
+        .replace(/data:/gi, '');
+}
+
+// Global Toast Notification System for Professional UI Feedback
+function showToast(message, type = 'success') {
+    let toastContainer = document.getElementById('zynqraToastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'zynqraToastContainer';
+        toastContainer.className = 'fixed top-20 right-4 z-50 flex flex-col space-y-2 pointer-events-none';
+        document.body.appendChild(toastContainer);
+    }
+    const toast = document.createElement('div');
+    toast.className = `px-4 py-2.5 rounded-2xl text-xs font-bold text-white shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center space-x-2 ${type === 'success' ? 'bg-emerald-600/90 border border-emerald-400/40' : 'bg-red-600/90 border border-red-400/40'}`;
+    toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-white' : 'fa-triangle-exclamation text-white'}"></i> <span>${sanitizeHTML(message)}</span>`;
+    toastContainer.appendChild(toast);
+    setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 50);
+    setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
 }
 
 // Global Anti-XSS Shield Interceptor for URLs and Input Payloads
@@ -64,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     loadHomeFeed();
     loadShortsFeed();
+    loadPostsFeed();
     loadFriendsList();
     loadMessengerContacts();
     setupSearchEngine();
@@ -71,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupOfflineDownloadsUI();
     setupProfileEditModal();
     setupVideoEditModal();
+    setupPostCreationUI();
     setupEventListeners();
     loadNotifications();
     setupQuickUploadButton();
@@ -116,7 +142,7 @@ function setupFirebaseAuthState() {
             if (doc.exists) {
                 currentUser = doc.data();
                 if (currentUser.isBanned) {
-                    alert('Your Zynqra account has been banned/restricted by the Admin due to content policy violations.');
+                    showToast('Your Zynqra account has been banned by Admin.', 'error');
                     auth.signOut();
                     return;
                 }
@@ -154,7 +180,7 @@ function setupGoogleAuth() {
     if (logoutBtn) {
         logoutBtn.onclick = () => {
             auth.signOut().then(() => {
-                alert('Logged out successfully!');
+                showToast('Logged out successfully!');
                 window.location.reload();
             });
         };
@@ -163,6 +189,7 @@ function setupGoogleAuth() {
 
 function initializeAppUI() {
     const authContainer = document.getElementById('authContainer');
+    const postAvatar = document.getElementById('postCreatorAvatar');
     if (authContainer) {
         if (currentUser) {
             authContainer.innerHTML = `
@@ -170,6 +197,7 @@ function initializeAppUI() {
                     <img src="${sanitizeHTML(currentUser.avatar)}" alt="Profile" class="w-8 h-8 rounded-full object-cover border border-brand-cyan shadow-sm" title="${sanitizeHTML(currentUser.name)}">
                 </div>
             `;
+            if (postAvatar) postAvatar.src = currentUser.avatar;
         } else {
             authContainer.innerHTML = `
                 <button id="googleLoginBtn" class="flex items-center space-x-1.5 bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan px-3.5 py-1.5 rounded-full font-semibold hover:bg-brand-cyan/20 transition cursor-pointer">
@@ -183,10 +211,10 @@ function initializeAppUI() {
 function triggerGoogleLogin() {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).then((result) => {
-        alert('Successfully Logged in to Zynqra as ' + sanitizeHTML(result.user.displayName) + '!');
+        showToast('Successfully Logged in as ' + sanitizeHTML(result.user.displayName) + '!');
     }).catch((error) => {
         console.error("Google Auth Error:", error);
-        alert('Login Failed: ' + sanitizeHTML(error.message));
+        showToast('Login Failed: ' + sanitizeHTML(error.message), 'error');
     });
 }
 
@@ -226,6 +254,9 @@ function setupNavigation() {
     const headerShortsBtn = document.getElementById('headerShortsBtn');
     if (headerShortsBtn) headerShortsBtn.onclick = () => switchPage('shorts');
 
+    const headerPostsBtn = document.getElementById('headerPostsBtn');
+    if (headerPostsBtn) headerPostsBtn.onclick = () => switchPage('posts');
+
     const viewAllShortsBtn = document.getElementById('viewAllShortsBtn');
     if (viewAllShortsBtn) viewAllShortsBtn.onclick = () => switchPage('shorts');
 
@@ -255,8 +286,192 @@ function switchPage(pageId) {
     if (pageId === 'friends') loadFriendsList();
     if (pageId === 'messenger') loadMessengerContacts();
     if (pageId === 'shorts') loadShortsFeed();
+    if (pageId === 'posts') loadPostsFeed();
     if (pageId === 'downloads') loadOfflineDownloadsUI();
 }
+
+// --- Facebook Style Photo Posts Engine ---
+function setupPostCreationUI() {
+    const postFileInput = document.getElementById('postImageFile');
+    const previewContainer = document.getElementById('postImagePreviewContainer');
+    const previewImg = document.getElementById('postImagePreview');
+    const removeImgBtn = document.getElementById('removePostImageBtn');
+    const publishBtn = document.getElementById('publishPostBtn');
+    const captionInput = document.getElementById('postCaptionInput');
+
+    if (postFileInput) {
+        postFileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showToast('Uploading photo via Firebase Storage...');
+            try {
+                const storageRef = storage.ref(`posts/${Date.now()}_${file.name}`);
+                const snapshot = await storageRef.put(file);
+                postImageBase64 = await snapshot.ref.getDownloadURL();
+
+                if (previewImg && previewContainer) {
+                    previewImg.src = postImageBase64;
+                    previewContainer.classList.remove('hidden');
+                }
+                showToast('Photo uploaded successfully!');
+            } catch(err) {
+                showToast('Failed to upload image.', 'error');
+            }
+        };
+    }
+
+    if (removeImgBtn) {
+        removeImgBtn.onclick = () => {
+            postImageBase64 = null;
+            if (previewContainer) previewContainer.classList.add('hidden');
+            if (postFileInput) postFileInput.value = '';
+        };
+    }
+
+    if (publishBtn && captionInput) {
+        publishBtn.onclick = async () => {
+            if (!currentUser) {
+                showToast('Please login with Google to create a post!', 'error');
+                return;
+            }
+
+            const caption = sanitizeHTML(captionInput.value.trim());
+            if (!caption && !postImageBase64) {
+                showToast('Please write something or attach a photo.', 'error');
+                return;
+            }
+
+            publishBtn.innerText = 'Posting...';
+            publishBtn.disabled = true;
+
+            try {
+                await db.collection("posts").add({
+                    caption: caption,
+                    imageUrl: postImageBase64 || '',
+                    creatorName: currentUser.name,
+                    creatorEmail: currentUser.email,
+                    creatorAvatar: currentUser.avatar,
+                    likes: 0,
+                    comments: [],
+                    date: new Date().toISOString().split('T')[0],
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast('Post published successfully!');
+                captionInput.value = '';
+                postImageBase64 = null;
+                if (previewContainer) previewContainer.classList.add('hidden');
+                loadPostsFeed();
+            } catch (err) {
+                showToast('Error publishing post: ' + err.message, 'error');
+            } finally {
+                publishBtn.innerText = 'Post';
+                publishBtn.disabled = false;
+            }
+        };
+    }
+}
+
+function loadPostsFeed() {
+    db.collection("posts").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+        const container = document.getElementById('postsFeedContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        let posts = [];
+        snapshot.forEach(doc => posts.push({ id: doc.id, ...doc.data() }));
+        globalAllPosts = posts;
+
+        if (posts.length === 0) {
+            container.innerHTML = `<div class="text-center text-gray-500 text-xs py-10 bg-[#242526] rounded-3xl border border-dark-700">No posts found. Be the first to post!</div>`;
+            return;
+        }
+
+        posts.forEach(post => {
+            const card = document.createElement('div');
+            card.className = 'bg-[#242526] border border-dark-700 rounded-3xl p-4 shadow-xl space-y-3';
+            
+            let imageHTML = post.imageUrl ? `<img src="${sanitizeHTML(post.imageUrl)}" class="w-full max-h-96 object-cover rounded-2xl border border-dark-700">` : '';
+            
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 cursor-pointer group" onclick="openExternalProfile('${sanitizeHTML(post.creatorEmail)}')">
+                        <img src="${sanitizeHTML(post.creatorAvatar)}" class="w-10 h-10 rounded-full object-cover border border-brand-cyan group-hover:scale-105 transition">
+                        <div>
+                            <h4 class="font-bold text-white text-xs group-hover:text-brand-cyan transition">${sanitizeHTML(post.creatorName)}</h4>
+                            <span class="text-[9px] text-gray-400">${sanitizeHTML(post.date)}</span>
+                        </div>
+                    </div>
+                </div>
+                ${post.caption ? `<p class="text-gray-100 text-xs whitespace-pre-wrap">${sanitizeHTML(post.caption)}</p>` : ''}
+                ${imageHTML}
+                <div class="flex items-center justify-between border-t border-dark-700 pt-2.5 text-xs text-gray-300">
+                    <button onclick="likePost('${sanitizeHTML(post.id)}', ${post.likes || 0})" class="flex items-center space-x-1.5 hover:text-brand-red transition cursor-pointer">
+                        <i class="fa-solid fa-thumbs-up text-brand-cyan"></i> <span>${formatNumber(post.likes || 0)} Likes</span>
+                    </button>
+                    <span class="text-[10px] text-gray-400">${formatNumber((post.comments || []).length)} Comments</span>
+                </div>
+                <div class="space-y-2 pt-1 border-t border-dark-700/60">
+                    <div class="flex space-x-2">
+                        <input type="text" id="postCommentInput_${sanitizeHTML(post.id)}" placeholder="Write a comment..." class="flex-1 bg-[#3a3b3c] border-0 rounded-2xl px-3.5 py-2 text-white outline-none text-xs placeholder-gray-400">
+                        <button onclick="commentOnPost('${sanitizeHTML(post.id)}')" class="bg-brand-cyan text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-cyan-400 transition cursor-pointer">Send</button>
+                    </div>
+                    <div class="space-y-1.5 max-h-36 overflow-y-auto">
+                        ${(post.comments || []).map(c => `
+                            <div class="bg-[#3a3b3c] p-2 rounded-xl text-[11px]">
+                                <span class="font-bold text-white">${sanitizeHTML(c.user)}:</span> ${sanitizeHTML(c.text)}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    });
+}
+
+window.likePost = function(postId, currentLikes) {
+    if (!currentUser) {
+        showToast('Please login to like posts!', 'error');
+        return;
+    }
+    const likeKey = `post_liked_${currentUser.email}_${postId}`;
+    if (localStorage.getItem(likeKey)) {
+        showToast('You already liked this post!', 'error');
+        return;
+    }
+    db.collection("posts").doc(postId).update({ likes: currentLikes + 1 }).then(() => {
+        localStorage.setItem(likeKey, 'true');
+        showToast('Post liked!');
+    });
+};
+
+window.commentOnPost = function(postId) {
+    const input = document.getElementById(`postCommentInput_${postId}`);
+    if (!input) return;
+    const text = sanitizeHTML(input.value.trim());
+    if (!text) return;
+    if (!currentUser) {
+        showToast('Please login to comment!', 'error');
+        return;
+    }
+
+    db.collection("posts").doc(postId).get().then(doc => {
+        if (!doc.exists) return;
+        const post = doc.data();
+        const comments = post.comments || [];
+        comments.push({
+            user: currentUser.name,
+            email: currentUser.email,
+            text: text,
+            date: new Date().toISOString().split('T')[0]
+        });
+        db.collection("posts").doc(postId).update({ comments: comments }).then(() => {
+            input.value = '';
+            showToast('Comment added!');
+        });
+    });
+};
 
 function loadHomeFeed(category = 'all') {
     db.collection("videos").orderBy("date", "desc").onSnapshot((snapshot) => {
@@ -437,11 +652,11 @@ function setupFriendSearchEngine() {
 
 window.toggleSubscribeUser = function(creatorEmail, btnElement) {
     if (!currentUser) {
-        alert('Please login with Google to subscribe!');
+        showToast('Please login with Google to subscribe!', 'error');
         return;
     }
     if (currentUser.email === creatorEmail) {
-        alert('You cannot subscribe to your own channel!');
+        showToast('You cannot subscribe to your own channel!', 'error');
         return;
     }
 
@@ -453,13 +668,13 @@ window.toggleSubscribeUser = function(creatorEmail, btnElement) {
             currentSubs = Math.max(0, currentSubs - 1);
             btnElement.innerText = 'Subscribe';
             btnElement.className = 'bg-white text-dark-900 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
-            alert('Unsubscribed successfully.');
+            showToast('Unsubscribed successfully.');
         } else {
             localStorage.setItem(subKey, 'true');
             currentSubs += 1;
             btnElement.innerText = 'Subscribed ✓';
             btnElement.className = 'bg-dark-700 text-gray-300 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
-            alert('Successfully subscribed!');
+            showToast('Successfully subscribed!');
         }
         db.collection("users").doc(creatorEmail).update({ subs: currentSubs });
     });
@@ -473,13 +688,13 @@ function setupOfflineDownloadsUI() {
             let downloads = JSON.parse(localStorage.getItem('zynqra_offline_downloads') || '[]');
             
             if (downloads.some(v => v.id === activeVideo.id)) {
-                alert('Video is already downloaded for offline viewing!');
+                showToast('Video is already downloaded for offline viewing!', 'error');
                 return;
             }
 
             downloads.push(activeVideo);
             localStorage.setItem('zynqra_offline_downloads', JSON.stringify(downloads));
-            alert('Video successfully downloaded for offline mode!');
+            showToast('Video successfully downloaded for offline mode!');
             loadOfflineDownloadsUI();
         };
     }
@@ -496,11 +711,11 @@ function setupOfflineDownloadsUI() {
             if (!activeShortForModal) return;
             let downloads = JSON.parse(localStorage.getItem('zynqra_offline_downloads') || '[]');
             if (downloads.some(v => v.id === activeShortForModal.id)) {
-                alert('Short is already saved/downloaded!');
+                showToast('Short is already saved/downloaded!', 'error');
             } else {
                 downloads.push(activeShortForModal);
                 localStorage.setItem('zynqra_offline_downloads', JSON.stringify(downloads));
-                alert('Short successfully saved to Downloads!');
+                showToast('Short successfully saved to Downloads!');
             }
             shortsModal.classList.add('hidden');
             loadOfflineDownloadsUI();
@@ -516,7 +731,7 @@ function setupOfflineDownloadsUI() {
                 downloads.push(activeShortForModal);
                 localStorage.setItem('zynqra_offline_downloads', JSON.stringify(downloads));
             }
-            alert('Short downloaded for offline viewing!');
+            showToast('Short downloaded for offline viewing!');
             shortsModal.classList.add('hidden');
             loadOfflineDownloadsUI();
         };
@@ -560,7 +775,7 @@ function loadOfflineDownloadsUI() {
             downloads.splice(index, 1);
             localStorage.setItem('zynqra_offline_downloads', JSON.stringify(downloads));
             loadOfflineDownloadsUI();
-            alert('Removed from offline downloads.');
+            showToast('Removed from offline downloads.');
         };
         container.appendChild(card);
     });
@@ -646,7 +861,7 @@ function loadShortsFeed() {
                         <i class="fa-solid fa-comment text-brand-cyan text-sm"></i>
                         <span class="text-[8px] font-bold mt-0.5">${formatNumber((short.comments || []).length)}</span>
                     </button>
-                    <button onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?v=' + '${sanitizeHTML(short.id)}'); alert('Short share link copied!');" class="bg-dark-800/90 hover:bg-dark-700 text-white w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-xl border border-dark-600 cursor-pointer transition transform active:scale-90">
+                    <button onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?v=' + '${sanitizeHTML(short.id)}'); showToast('Short share link copied!');" class="bg-dark-800/90 hover:bg-dark-700 text-white w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-xl border border-dark-600 cursor-pointer transition transform active:scale-90">
                         <i class="fa-solid fa-share text-emerald-400 text-sm"></i>
                         <span class="text-[8px] font-bold mt-0.5">Share</span>
                     </button>
@@ -694,17 +909,17 @@ window.openShortsSettings = function(id) {
 
 window.likeShort = function(id, currentLikes) {
     if (!currentUser) {
-        alert('Please login with Google to like shorts!');
+        showToast('Please login with Google to like shorts!', 'error');
         return;
     }
     const likeKey = `short_liked_${currentUser.email}_${id}`;
     if (localStorage.getItem(likeKey)) {
-        alert('You have already liked this short!');
+        showToast('You have already liked this short!', 'error');
         return;
     }
     db.collection("videos").doc(id).update({ likes: currentLikes + 1 }).then(() => {
         localStorage.setItem(likeKey, 'true');
-        alert('Short liked successfully!');
+        showToast('Short liked successfully!');
     });
 };
 
@@ -733,7 +948,7 @@ function renderShortsComments(id) {
                 const text = sanitizeHTML(inputField.value.trim());
                 if (!text) return;
                 if (!currentUser) {
-                    alert('Please login to comment!');
+                    showToast('Please login to comment!', 'error');
                     return;
                 }
 
@@ -748,6 +963,7 @@ function renderShortsComments(id) {
                 db.collection("videos").doc(id).update({ comments: updatedComments }).then(() => {
                     inputField.value = '';
                     renderShortsComments(id);
+                    showToast('Comment posted!');
                 });
             };
         }
@@ -775,7 +991,7 @@ function renderShortsComments(id) {
 function openExternalProfile(email) {
     db.collection("users").doc(email).get().then((doc) => {
         if (!doc.exists) {
-            alert('User profile not found.');
+            showToast('User profile not found.', 'error');
             return;
         }
         const user = doc.data();
@@ -800,7 +1016,7 @@ function openExternalProfile(email) {
             subBtn.className = isSubbed ? 'bg-dark-700 text-gray-300 font-bold px-4 py-2 rounded-2xl text-xs cursor-default shadow' : 'bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow';
             subBtn.onclick = () => {
                 if (!currentUser) {
-                    alert('Please login to subscribe!');
+                    showToast('Please login to subscribe!', 'error');
                     return;
                 }
                 toggleSubscribeUser(user.email, subBtn);
@@ -816,43 +1032,75 @@ function openExternalProfile(email) {
             let allUserVideos = [];
             vSnapshot.forEach(vDoc => allUserVideos.push({ id: vDoc.id, ...vDoc.data() }));
 
-            const renderExtTabContent = (type) => {
-                const area = document.getElementById('extTabContentArea');
-                if (!area) return;
-                area.innerHTML = '';
-                const filtered = allUserVideos.filter(v => type === 'shorts' ? v.aspectRatio === '9:16' : v.aspectRatio !== '9:16');
-                
-                if (filtered.length === 0) {
-                    area.innerHTML = `<p class="text-gray-500 text-xs col-span-full">No ${type} found.</p>`;
-                    return;
-                }
+            db.collection("posts").where("creatorEmail", "==", user.email).get().then((pSnapshot) => {
+                const extPostCount = document.getElementById('extProfilePostCount');
+                if (extPostCount) extPostCount.innerText = `${pSnapshot.size} Posts`;
+                let allUserPosts = [];
+                pSnapshot.forEach(pDoc => allUserPosts.push({ id: pDoc.id, ...pDoc.data() }));
 
-                filtered.forEach(v => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-dark-900 border border-dark-700 rounded-2xl overflow-hidden p-2.5 flex space-x-2.5 cursor-pointer';
-                    card.innerHTML = `
-                        <img src="${sanitizeHTML(v.thumbnailUrl || v.creatorAvatar)}" class="w-20 h-12 rounded-xl object-cover">
-                        <div class="flex-1 truncate">
-                            <h4 class="font-bold text-white text-[11px] truncate">${sanitizeHTML(v.title)}</h4>
-                            <div class="text-[9px] text-gray-400 mt-1">${formatNumber(v.views || 0)} views</div>
-                        </div>
-                    `;
-                    card.onclick = () => openVideoModal(v);
-                    area.appendChild(card);
-                });
-            };
+                const renderExtTabContent = (type) => {
+                    const area = document.getElementById('extTabContentArea');
+                    if (!area) return;
+                    area.innerHTML = '';
+                    
+                    if (type === 'posts') {
+                        if (allUserPosts.length === 0) {
+                            area.innerHTML = `<p class="text-gray-500 text-xs col-span-full">No posts found.</p>`;
+                            return;
+                        }
+                        allUserPosts.forEach(p => {
+                            area.innerHTML += `
+                                <div class="bg-dark-900 border border-dark-700 rounded-2xl p-3 space-y-2">
+                                    <p class="text-white text-xs">${sanitizeHTML(p.caption || '')}</p>
+                                    ${p.imageUrl ? `<img src="${sanitizeHTML(p.imageUrl)}" class="w-full h-32 object-cover rounded-xl">` : ''}
+                                </div>
+                            `;
+                        });
+                        return;
+                    }
 
-            renderExtTabContent('videos');
-            document.getElementById('extTabVideos').onclick = () => {
-                document.getElementById('extTabVideos').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer';
-                document.getElementById('extTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer';
+                    const filtered = allUserVideos.filter(v => type === 'shorts' ? v.aspectRatio === '9:16' : v.aspectRatio !== '9:16');
+                    
+                    if (filtered.length === 0) {
+                        area.innerHTML = `<p class="text-gray-500 text-xs col-span-full">No ${type} found.</p>`;
+                        return;
+                    }
+
+                    filtered.forEach(v => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-dark-900 border border-dark-700 rounded-2xl overflow-hidden p-2.5 flex space-x-2.5 cursor-pointer';
+                        card.innerHTML = `
+                            <img src="${sanitizeHTML(v.thumbnailUrl || v.creatorAvatar)}" class="w-20 h-12 rounded-xl object-cover">
+                            <div class="flex-1 truncate">
+                                <h4 class="font-bold text-white text-[11px] truncate">${sanitizeHTML(v.title)}</h4>
+                                <div class="text-[9px] text-gray-400 mt-1">${formatNumber(v.views || 0)} views</div>
+                            </div>
+                        `;
+                        card.onclick = () => openVideoModal(v);
+                        area.appendChild(card);
+                    });
+                };
+
                 renderExtTabContent('videos');
-            };
-            document.getElementById('extTabShorts').onclick = () => {
-                document.getElementById('extTabShorts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer';
-                document.getElementById('extTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer';
-                renderExtTabContent('shorts');
-            };
+                document.getElementById('extTabVideos').onclick = () => {
+                    document.getElementById('extTabVideos').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabPosts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    renderExtTabContent('videos');
+                };
+                document.getElementById('extTabShorts').onclick = () => {
+                    document.getElementById('extTabShorts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabPosts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    renderExtTabContent('shorts');
+                };
+                document.getElementById('extTabPosts').onclick = () => {
+                    document.getElementById('extTabPosts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    document.getElementById('extTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                    renderExtTabContent('posts');
+                };
+            });
         });
     });
 }
@@ -889,7 +1137,7 @@ function openVideoModal(video) {
         shareBtn.onclick = () => {
             const uniqueVideoLink = window.location.origin + window.location.pathname + '?v=' + video.id;
             navigator.clipboard.writeText(uniqueVideoLink).then(() => {
-                alert('Unique Video Share Link copied to clipboard!\n' + uniqueVideoLink);
+                showToast('Unique Video Share Link copied to clipboard!');
             });
         };
     }
@@ -904,12 +1152,12 @@ function openVideoModal(video) {
     const likeBtn = document.getElementById('modalLikeBtn');
     likeBtn.onclick = () => {
         if (!currentUser) {
-            alert('Please login with Google to like videos!');
+            showToast('Please login with Google to like videos!', 'error');
             return;
         }
         const userLikeKey = `liked_${currentUser.email}_${video.id}`;
         if (localStorage.getItem(userLikeKey)) {
-            alert('You have already liked this video!');
+            showToast('You have already liked this video!', 'error');
             return;
         }
 
@@ -918,7 +1166,7 @@ function openVideoModal(video) {
             localStorage.setItem(userLikeKey, 'true');
             document.getElementById('modalLikeCount').innerText = formatNumber(newLikes);
             activeVideo.likes = newLikes;
-            alert('Video liked successfully!');
+            showToast('Video liked successfully!');
         });
     };
 }
@@ -1154,10 +1402,10 @@ function setupMessengerUIEnhancements() {
             const blockKey = `blocked_${currentUser.email}_${activeChatContact.email}`;
             if (localStorage.getItem(blockKey)) {
                 localStorage.removeItem(blockKey);
-                alert('User unblocked successfully!');
+                showToast('User unblocked successfully!');
             } else {
                 localStorage.setItem(blockKey, 'true');
-                alert('User blocked successfully.');
+                showToast('User blocked successfully.', 'error');
             }
             chatOptionsMenu.classList.add('hidden');
             selectActiveChatContact(activeChatContact);
@@ -1238,7 +1486,7 @@ function setupProfileEditModal() {
     if (openBtn && modal) {
         openBtn.onclick = () => {
             if (!currentUser) {
-                alert('Please login first.');
+                showToast('Please login first.', 'error');
                 return;
             }
             document.getElementById('editNameInput').value = currentUser.name || '';
@@ -1259,7 +1507,7 @@ function setupProfileEditModal() {
             const imageFile = document.getElementById('profileImageFile').files[0];
 
             let avatarUrl = currentUser.avatar;
-            alert('Updating profile via Firebase Storage...');
+            showToast('Updating profile via Firebase Storage...');
 
             if (imageFile) {
                 const storageRef = storage.ref(`avatars/${Date.now()}_${imageFile.name}`);
@@ -1273,7 +1521,7 @@ function setupProfileEditModal() {
 
             await db.collection("users").doc(currentUser.email).set(currentUser, { merge: true });
             
-            alert('Profile updated successfully!');
+            showToast('Profile updated successfully!');
             modal.classList.add('hidden');
             loadUserProfile();
             initializeAppUI();
@@ -1310,12 +1558,12 @@ function setupVideoEditModal() {
         saveBtn.onclick = async () => {
             const newTitle = sanitizeHTML(document.getElementById('editVideoTitleInput').value.trim());
             if (!newTitle || !editingVideoId) {
-                alert('Please enter a valid title.');
+                showToast('Please enter a valid title.', 'error');
                 return;
             }
 
             await db.collection("videos").doc(editingVideoId).update({ title: newTitle });
-            alert('Video title updated successfully!');
+            showToast('Video title updated successfully!');
             modal.classList.add('hidden');
             loadUserProfile();
         };
@@ -1335,24 +1583,23 @@ window.openEditVideoModal = function(id, currentTitle) {
 window.deleteUserVideo = async function(id) {
     if (confirm('Are you sure you want to delete this video?')) {
         await db.collection("videos").doc(id).delete();
-        alert('Video deleted successfully!');
+        showToast('Video deleted successfully!');
         loadUserProfile();
     }
 };
 
-// --- SECURE FIREBASE STORAGE UPLOADER & ANTI-PORN FILTER ---
 function setupEventListeners() {
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) {
-                alert('Please login with Google to upload videos!');
+                showToast('Please login with Google to upload videos!', 'error');
                 return;
             }
 
             if (currentUser.isBanned) {
-                alert('Your account is restricted from uploading videos.');
+                showToast('Your account is restricted from uploading videos.', 'error');
                 return;
             }
 
@@ -1365,7 +1612,7 @@ function setupEventListeners() {
             const thumbFile = document.getElementById('thumbnailFile').files[0];
 
             if (!videoFile) {
-                alert('Please select a video file.');
+                showToast('Please select a video file.', 'error');
                 return;
             }
 
@@ -1381,7 +1628,7 @@ function setupEventListeners() {
                     isBanned: isRestricted
                 });
 
-                alert('Warning: Your upload violates Zynqra community guidelines regarding adult content. Your account has received a strike/restriction.');
+                showToast('Warning: Violates community guidelines regarding adult content.', 'error');
                 return;
             }
 
@@ -1392,12 +1639,10 @@ function setupEventListeners() {
             }
 
             try {
-                // Upload Video to Firebase Storage
                 const videoStorageRef = storage.ref(`videos/${Date.now()}_${videoFile.name}`);
                 const videoUploadTask = await videoStorageRef.put(videoFile);
                 const videoUrl = await videoUploadTask.ref.getDownloadURL();
 
-                // Upload Thumbnail to Firebase Storage (if provided)
                 let thumbnailUrl = '';
                 if (thumbFile) {
                     const thumbStorageRef = storage.ref(`thumbnails/${Date.now()}_${thumbFile.name}`);
@@ -1414,11 +1659,11 @@ function setupEventListeners() {
                     date: new Date().toISOString().split('T')[0]
                 });
 
-                alert('Video successfully uploaded and published on Zynqra!');
+                showToast('Video successfully uploaded and published!');
                 uploadForm.reset();
                 switchPage('home');
             } catch (error) {
-                alert('Upload Error: ' + sanitizeHTML(error.message));
+                showToast('Upload Error: ' + sanitizeHTML(error.message), 'error');
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -1428,7 +1673,6 @@ function setupEventListeners() {
         });
     }
 
-    // Chat Message & Image Upload using Firebase Storage
     const sendBtn = document.getElementById('sendChatMsgBtn');
     const chatInput = document.getElementById('chatInputMsg');
     const chatImageInput = document.getElementById('chatImageInput');
@@ -1441,7 +1685,7 @@ function setupEventListeners() {
             const blockKey = `blocked_${currentUser.email}_${activeChatContact.email}`;
             const blockedByThem = localStorage.getItem(`blocked_${activeChatContact.email}_${currentUser.email}`);
             if (localStorage.getItem(blockKey) || blockedByThem) {
-                alert('Unable to send message. You have blocked this user or are restricted.');
+                showToast('Unable to send message. User blocked.', 'error');
                 return;
             }
 
@@ -1478,7 +1722,7 @@ function setupEventListeners() {
                 const file = e.target.files[0];
                 if (!file || !activeChatContact || !currentUser) return;
 
-                alert('Uploading image to chat via Firebase Storage...');
+                showToast('Uploading image to chat...');
                 try {
                     const chatImageRef = storage.ref(`chat_images/${Date.now()}_${file.name}`);
                     const uploadSnapshot = await chatImageRef.put(file);
@@ -1488,10 +1732,10 @@ function setupEventListeners() {
                         sendAction(downloadUrl);
                         chatImageInput.value = '';
                     } else {
-                        alert('Image upload failed.');
+                        showToast('Image upload failed.', 'error');
                     }
                 } catch(err) {
-                    alert('Error uploading chat image.');
+                    showToast('Error uploading chat image.', 'error');
                 }
             };
         }
@@ -1523,7 +1767,7 @@ function setupEventListeners() {
             const text = sanitizeHTML(commentInput.value.trim());
             if (!text || !activeVideo) return;
             if (!currentUser) {
-                alert('Please login to post a comment!');
+                showToast('Please login to post a comment!', 'error');
                 return;
             }
 
@@ -1539,6 +1783,7 @@ function setupEventListeners() {
                 activeVideo.comments = updatedComments;
                 renderComments(activeVideo);
                 commentInput.value = '';
+                showToast('Comment posted!');
             });
         };
     }
@@ -1606,46 +1851,78 @@ function loadUserProfile() {
         let myAllVideos = [];
         snapshot.forEach(doc => myAllVideos.push({ id: doc.id, ...doc.data() }));
 
-        const renderProfileTabContent = (type) => {
-            const area = document.getElementById('profileTabContentArea');
-            if (!area) return;
-            area.innerHTML = '';
-            const filtered = myAllVideos.filter(v => type === 'shorts' ? v.aspectRatio === '9:16' : v.aspectRatio !== '9:16');
+        db.collection("posts").where("creatorEmail", "==", currentUser.email).get().then((pSnapshot) => {
+            const profilePostCount = document.getElementById('profilePostCountBadge');
+            if (profilePostCount) profilePostCount.innerText = `${pSnapshot.size} Posts`;
+            let myAllPosts = [];
+            pSnapshot.forEach(pDoc => myAllPosts.push({ id: pDoc.id, ...pDoc.data() }));
 
-            if (filtered.length === 0) {
-                area.innerHTML = `<p class="text-gray-500 text-[11px] col-span-full">No ${type} uploaded yet.</p>`;
-                return;
-            }
+            const renderProfileTabContent = (type) => {
+                const area = document.getElementById('profileTabContentArea');
+                if (!area) return;
+                area.innerHTML = '';
+                
+                if (type === 'posts') {
+                    if (myAllPosts.length === 0) {
+                        area.innerHTML = `<p class="text-gray-500 text-[11px] col-span-full">No posts uploaded yet.</p>`;
+                        return;
+                    }
+                    myAllPosts.forEach(p => {
+                        area.innerHTML += `
+                            <div class="bg-dark-900 border border-dark-700 rounded-2xl overflow-hidden p-3 space-y-2 shadow-md">
+                                <p class="text-white text-xs">${sanitizeHTML(p.caption || '')}</p>
+                                ${p.imageUrl ? `<img src="${sanitizeHTML(p.imageUrl)}" class="w-full h-32 object-cover rounded-xl">` : ''}
+                            </div>
+                        `;
+                    });
+                    return;
+                }
 
-            filtered.forEach(v => {
-                area.innerHTML += `
-                    <div class="bg-dark-900 border border-dark-700 rounded-2xl overflow-hidden p-3 flex items-center justify-between shadow-md">
-                        <div class="flex items-center space-x-2.5 truncate">
-                            <img src="${sanitizeHTML(v.thumbnailUrl || v.creatorAvatar)}" class="w-16 h-10 rounded-xl object-cover">
-                            <div class="truncate">
-                                <h4 class="font-bold text-white text-[11px] truncate">${sanitizeHTML(v.title)}</h4>
-                                <div class="text-[9px] text-gray-400 mt-0.5">${formatNumber(v.views || 0)} views • ${formatNumber(v.likes || 0)} likes</div>
+                const filtered = myAllVideos.filter(v => type === 'shorts' ? v.aspectRatio === '9:16' : v.aspectRatio !== '9:16');
+
+                if (filtered.length === 0) {
+                    area.innerHTML = `<p class="text-gray-500 text-[11px] col-span-full">No ${type} uploaded yet.</p>`;
+                    return;
+                }
+
+                filtered.forEach(v => {
+                    area.innerHTML += `
+                        <div class="bg-dark-900 border border-dark-700 rounded-2xl overflow-hidden p-3 flex items-center justify-between shadow-md">
+                            <div class="flex items-center space-x-2.5 truncate">
+                                <img src="${sanitizeHTML(v.thumbnailUrl || v.creatorAvatar)}" class="w-16 h-10 rounded-xl object-cover">
+                                <div class="truncate">
+                                    <h4 class="font-bold text-white text-[11px] truncate">${sanitizeHTML(v.title)}</h4>
+                                    <div class="text-[9px] text-gray-400 mt-0.5">${formatNumber(v.views || 0)} views • ${formatNumber(v.likes || 0)} likes</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 shrink-0">
+                                <button onclick="openEditVideoModal('${v.id}', '${sanitizeHTML(v.title)}')" class="bg-brand-cyan/20 text-brand-cyan px-2.5 py-1 rounded-xl text-[10px] font-semibold cursor-pointer hover:bg-brand-cyan/30">Edit</button>
+                                <button onclick="deleteUserVideo('${v.id}')" class="bg-red-500/20 text-red-400 px-2.5 py-1 rounded-xl text-[10px] font-semibold cursor-pointer hover:bg-red-500/30">Delete</button>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <button onclick="openEditVideoModal('${v.id}', '${sanitizeHTML(v.title)}')" class="bg-brand-cyan/20 text-brand-cyan px-2.5 py-1 rounded-xl text-[10px] font-semibold cursor-pointer hover:bg-brand-cyan/30">Edit</button>
-                            <button onclick="deleteUserVideo('${v.id}')" class="bg-red-500/20 text-red-400 px-2.5 py-1 rounded-xl text-[10px] font-semibold cursor-pointer hover:bg-red-500/30">Delete</button>
-                        </div>
-                    </div>
-                `;
-            });
-        };
+                    `;
+                });
+            };
 
-        renderProfileTabContent('videos');
-        document.getElementById('profileTabVideos').onclick = () => {
-            document.getElementById('profileTabVideos').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer';
-            document.getElementById('profileTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer';
             renderProfileTabContent('videos');
-        };
-        document.getElementById('profileTabShorts').onclick = () => {
-            document.getElementById('profileTabShorts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer';
-            document.getElementById('profileTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer';
-            renderProfileTabContent('shorts');
-        };
+            document.getElementById('profileTabVideos').onclick = () => {
+                document.getElementById('profileTabVideos').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabPosts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                renderProfileTabContent('videos');
+            };
+            document.getElementById('profileTabShorts').onclick = () => {
+                document.getElementById('profileTabShorts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabPosts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                renderProfileTabContent('shorts');
+            };
+            document.getElementById('profileTabPosts').onclick = () => {
+                document.getElementById('profileTabPosts').className = 'text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabVideos').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                document.getElementById('profileTabShorts').className = 'text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0';
+                renderProfileTabContent('posts');
+            };
+        });
     });
-    }
+}
