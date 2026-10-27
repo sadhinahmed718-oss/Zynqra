@@ -63,7 +63,7 @@
             height: 100%; 
             width: 100%; 
             max-width: 100%; 
-            min-height: 100vh;
+            min-height:  80vh;
             background: #000;
             position: relative;
             overflow: hidden;
@@ -85,12 +85,57 @@
             bottom: 0;
         }
         .smooth-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Splash Intro Animation Styling */
+        #splashScreen {
+            transition: opacity 0.6s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-dark-900 text-gray-100 antialiased selection:bg-brand-red selection:text-white text-xs">
 
+    <!-- Splash Screen with Animated Neon Logo (3s Animation Intro) -->
+    <div id="splashScreen" class="fixed inset-0 bg-[#0f0f0f] z-50 flex flex-col items-center justify-center space-y-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-28 h-28 sm:w-36 sm:h-36">
+          <defs>
+            <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0f0f0f" />
+              <stop offset="100%" stop-color="#181818" />
+            </linearGradient>
+            <linearGradient id="zGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00f2fe" />
+              <stop offset="100%" stop-color="#ff0033" />
+            </linearGradient>
+            <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="12" result="blur1" />
+              <feGaussianBlur stdDeviation="6" result="blur2" />
+              <feMerge>
+                <feMergeNode in="blur1" />
+                <feMergeNode in="blur2" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
+          <rect x="20" y="20" width="472" height="472" rx="95" fill="none" stroke="url(#zGrad)" stroke-width="6" opacity="0.6" />
+          <g filter="url(#glow)">
+            <g transform="translate(256, 256)">
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="3s" repeatCount="indefinite" additive="sum" />
+              <g transform="translate(-256, -256)">
+                <circle cx="190" cy="256" r="75" fill="none" stroke="#00f2fe" stroke-width="18" opacity="0.9"/>
+                <circle cx="190" cy="256" r="45" fill="none" stroke="#00f2fe" stroke-width="10" opacity="0.7"/>
+                <path d="M 280 195 L 370 256 L 280 317 Z" fill="none" stroke="#ff0033" stroke-width="18" stroke-linejoin="round" opacity="0.9"/>
+                <path d="M 295 215 L 345 256 L 295 297 Z" fill="none" stroke="#ff0033" stroke-width="10" stroke-linejoin="round" opacity="0.7"/>
+                <path d="M 230 210 Q 256 256 230 302" fill="none" stroke="url(#zGrad)" stroke-width="16" stroke-linecap="round"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+        <span class="font-black text-base sm:text-lg tracking-widest bg-gradient-to-r from-brand-cyan to-brand-red bg-clip-text text-transparent animate-pulse">ZYNQRA</span>
+    </div>
+
     <!-- Top Header Navbar (Fixed & Safe Area padding) -->
-    <header class="fixed top-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-b border-dark-700/80 z-50 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)]">
+    <header class="fixed top-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-b border-dark-700/80 z-40 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)]">
         <div class="flex items-center space-x-2 sm:space-x-3">
             <button id="hamburgerBtn" class="p-2 hover:bg-dark-700/60 rounded-full text-gray-300 transition smooth-transition cursor-pointer"><i class="fa-solid fa-bars text-base"></i></button>
             <a href="#" id="logoHome" class="flex items-center space-x-2 group">
@@ -294,71 +339,112 @@
                 <div id="friendsListContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </section>
 
-            <!-- MESSENGER PAGE (Updated with Block/Unblock & `:` Option Menu) -->
-            <section id="page-messenger" class="page-view hidden h-[calc(100vh-140px)] max-h-[700px] bg-[#242526] border border-dark-700 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
-                <!-- Top Horizontal Friend Selector Bar with Search Icon -->
-                <div class="bg-[#18191a] border-b border-dark-700/60 p-2.5 flex items-center space-x-3 shrink-0">
-                    <div class="relative">
-                        <button id="toggleMessengerSearchBtn" class="w-10 h-10 bg-[#3a3b3c] hover:bg-dark-700 rounded-full flex items-center justify-center text-emerald-400 transition shadow cursor-pointer" title="Search Friends">
-                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
-                        </button>
-                        <!-- Popup Search Box -->
-                        <div id="messengerSearchPopup" class="absolute top-12 left-0 w-64 bg-[#242526] border border-dark-700 rounded-2xl p-2 shadow-2xl hidden z-30">
-                            <input type="text" id="messengerSearchInput" placeholder="Search friend name..." class="w-full bg-[#3a3b3c] border border-dark-600 rounded-xl px-3 py-1.5 text-xs text-white outline-none placeholder-gray-400">
-                        </div>
+            <!-- FACEBOOK-STYLE ULTRA-SECURE & FIXED MESSENGER PAGE -->
+            <section id="page-messenger" class="page-view hidden h-[calc(100vh-80px)] max-h-[820px] bg-[#18191a] border border-dark-700 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+                
+                <!-- Messenger Header Bar (Facebook Style) -->
+                <div class="bg-[#242526] px-4 py-3 border-b border-dark-700 flex items-center justify-between shrink-0 shadow">
+                    <div class="flex items-center space-x-3">
+                        <h2 class="text-lg font-black text-white tracking-wide">Chats</h2>
                     </div>
-                    <!-- Horizontal Scrollable Friends List -->
-                    <div id="chatContactsHorizontalList" class="flex-1 flex items-center space-x-3 overflow-x-auto hide-scrollbar py-1"></div>
+                    <div class="flex items-center space-x-2">
+                        <button id="messengerNewChatBtn" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-white transition shadow cursor-pointer" title="New Message">
+                            <i class="fa-solid fa-pen-to-square text-sm"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Chat Box Area (FB Messenger Theme) -->
-                <div class="flex-1 flex flex-col bg-[#242526] relative min-w-0 overflow-hidden">
-                    <div id="activeChatHeader" class="p-3 border-b border-dark-700/60 flex items-center justify-between text-xs bg-[#18191a] z-10 shadow-md shrink-0">
-                        <div class="flex items-center space-x-2.5">
-                            <div class="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-gray-400 font-bold text-xs"><i class="fa-solid fa-user"></i></div>
-                            <div>
-                                <span class="font-bold text-white block">Select a chat</span>
-                                <span class="text-[9px] text-emerald-400">active now</span>
+                <!-- Main Dual-Pane or Dynamic Mobile Chat Layout -->
+                <div class="flex-1 flex overflow-hidden relative">
+                    
+                    <!-- Left Pane: Messenger Inbox & Active Stories/Friends Tray -->
+                    <div id="messengerSidebarPane" class="w-full md:w-80 bg-[#18191a] border-r border-dark-700 flex flex-col h-full shrink-0">
+                        <!-- Search Bar -->
+                        <div class="p-3">
+                            <div class="flex items-center bg-[#3a3b3c] rounded-full px-3.5 py-2">
+                                <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs mr-2"></i>
+                                <input type="text" id="messengerSearchInput" placeholder="Search Messenger..." class="w-full bg-transparent outline-none text-xs text-white placeholder-gray-400">
                             </div>
                         </div>
-                        <!-- `:` Options Menu (Block / Unblock button) -->
-                        <div class="relative">
-                            <button id="chatOptionsBtn" class="p-2 text-gray-300 hover:text-white rounded-full transition cursor-pointer hidden text-base font-black" title="Options">:</button>
-                            <div id="chatOptionsMenu" class="absolute right-0 top-8 bg-[#3a3b3c] border border-dark-600 rounded-xl shadow-2xl hidden z-30 py-1 w-32">
-                                <button id="blockUnblockUserBtn" class="w-full text-left px-3 py-1.5 text-red-400 hover:bg-dark-700 font-bold text-[11px] flex items-center space-x-1.5 cursor-pointer">
-                                    <i class="fa-solid fa-ban"></i> <span id="blockBtnText">Block User</span>
-                                </button>
+
+                        <!-- Facebook Style Stories / Active Friends Horizontal Tray -->
+                        <div class="px-3 pb-2 border-b border-dark-700/60 shrink-0">
+                            <div id="chatContactsHorizontalList" class="flex items-center space-x-3 overflow-x-auto hide-scrollbar py-1">
+                                <!-- Dynamic stories/contacts injected here -->
                             </div>
                         </div>
-                    </div>
 
-                    <div id="chatMessagesBox" class="flex-1 p-4 overflow-y-auto space-y-3 flex flex-col">
-                        <div class="m-auto text-center text-gray-400 text-[11px] bg-[#3a3b3c] px-4 py-2 rounded-xl border border-dark-700">
-                            Select a friend from the top bar to start chatting.
+                        <!-- Chat Conversation List (Inbox) -->
+                        <div id="messengerInboxList" class="flex-1 overflow-y-auto divide-y divide-dark-700/30">
+                            <!-- Dynamic chat threads injected here -->
                         </div>
                     </div>
 
-                    <!-- Professional Compact Emoji Toolbar -->
-                    <div id="emojiToolbar" class="bg-[#18191a] px-3 py-1.5 border-t border-dark-700/50 flex space-x-3 overflow-x-auto hide-scrollbar text-sm shrink-0 select-none">
-                        <span class="cursor-pointer hover:scale-125 transition">😊</span>
-                        <span class="cursor-pointer hover:scale-125 transition">😂</span>
-                        <span class="cursor-pointer hover:scale-125 transition">❤️</span>
-                        <span class="cursor-pointer hover:scale-125 transition">🔥</span>
-                        <span class="cursor-pointer hover:scale-125 transition">👍</span>
-                        <span class="cursor-pointer hover:scale-125 transition">🎉</span>
-                        <span class="cursor-pointer hover:scale-125 transition">😍</span>
-                        <span class="cursor-pointer hover:scale-125 transition">😎</span>
-                    </div>
-
-                    <!-- Messenger Input Bar with Image Attachment Support -->
-                    <div class="p-3 border-t border-dark-700/60 flex items-center space-x-2 bg-[#18191a] shrink-0 z-20">
-                        <label for="chatImageInput" class="w-9 h-9 bg-[#3a3b3c] hover:bg-dark-600 rounded-full flex items-center justify-center text-brand-cyan cursor-pointer transition shrink-0" title="Send Image">
-                            <i class="fa-solid fa-image text-xs"></i>
-                        </label>
-                        <input type="file" id="chatImageInput" accept="image/*" class="hidden">
+                    <!-- Right Pane: Active Chat Window (Fixed & Non-scrolling body frame) -->
+                    <div id="messengerChatPane" class="flex-1 flex flex-col bg-[#18191a] absolute inset-0 md:relative z-20 transform translate-x-full md:translate-x-0 transition-transform duration-300 overflow-hidden">
                         
-                        <input type="text" id="chatInputMsg" placeholder="Aa" class="flex-1 bg-[#3a3b3c] border-0 rounded-full px-4 py-2.5 text-white outline-none text-xs placeholder-gray-400 focus:ring-1 focus:ring-brand-cyan min-w-0">
-                        <button id="sendChatMsgBtn" class="bg-brand-cyan text-dark-900 w-9 h-9 rounded-full font-bold hover:bg-cyan-400 transition shadow flex items-center justify-center cursor-pointer shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+                        <!-- Active Chat Header -->
+                        <div id="activeChatHeader" class="bg-[#242526] px-4 py-2.5 border-b border-dark-700 flex items-center justify-between shrink-0 shadow-sm">
+                            <div class="flex items-center space-x-3">
+                                <button id="backToInboxBtn" class="md:hidden text-gray-300 hover:text-white p-1 mr-1"><i class="fa-solid fa-arrow-left text-base"></i></button>
+                                <div class="relative cursor-pointer" onclick="openExternalProfile(activeChatContact?.email)">
+                                    <img id="activeChatAvatar" src="https://via.placeholder.com/40" class="w-9 h-9 rounded-full object-cover hidden" alt="Avatar">
+                                    <div id="activeChatAvatarPlaceholder" class="w-9 h-9 rounded-full bg-[#3a3b3c] flex items-center justify-center text-gray-300 font-bold text-xs"><i class="fa-solid fa-user"></i></div>
+                                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#242526] rounded-full"></span>
+                                </div>
+                                <div>
+                                    <span id="activeChatName" class="font-bold text-white text-xs block cursor-pointer hover:underline" onclick="openExternalProfile(activeChatContact?.email)">Select a friend to start messaging</span>
+                                    <span id="activeChatStatus" class="text-[9px] text-emerald-400">Active Now</span>
+                                </div>
+                            </div>
+
+                            <!-- `:` Options Menu & Call Icons -->
+                            <div class="flex items-center space-x-3 text-brand-cyan">
+                                <div class="relative">
+                                    <button id="chatOptionsBtn" class="w-8 h-8 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-gray-200 transition cursor-pointer hidden"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
+                                    <div id="chatOptionsMenu" class="absolute right-0 top-10 bg-[#242526] border border-dark-600 rounded-2xl shadow-2xl hidden z-40 py-1.5 w-44">
+                                        <button id="blockUnblockUserBtn" class="w-full text-left px-4 py-2 text-red-400 hover:bg-red-950/40 font-bold text-xs flex items-center space-x-2 cursor-pointer transition">
+                                            <i class="fa-solid fa-ban"></i> <span id="blockBtnText">Block User</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages Display Area -->
+                        <div id="chatMessagesBox" class="flex-1 p-4 overflow-y-auto space-y-3 flex flex-col bg-[#18191a]">
+                            <div class="m-auto text-center text-gray-400 text-xs bg-[#242526] border border-dark-700 px-5 py-4 rounded-2xl shadow-lg max-w-sm">
+                                <i class="fa-solid fa-shield-halved text-brand-cyan text-xl mb-1.5 block"></i>
+                                Select a friend from the inbox or stories tray above to start secure encrypted chatting.
+                            </div>
+                        </div>
+
+                        <!-- Emoji Quick Toolbar -->
+                        <div id="emojiToolbar" class="bg-[#242526] px-3 py-1.5 border-t border-dark-700/60 flex space-x-3 overflow-x-auto hide-scrollbar text-base shrink-0 select-none items-center">
+                            <span class="cursor-pointer hover:scale-125 transition transform">😊</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">😂</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">❤️</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">🔥</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">👍</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">🎉</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">😍</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">🚀</span>
+                            <span class="cursor-pointer hover:scale-125 transition transform">💯</span>
+                        </div>
+
+                        <!-- Messenger Input Bar (Facebook Style) -->
+                        <div class="p-3 bg-[#242526] border-t border-dark-700 flex items-center space-x-2 shrink-0 z-30">
+                            <label for="chatImageInput" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-brand-cyan cursor-pointer transition shrink-0 shadow" title="Attach Image">
+                                <i class="fa-solid fa-image text-sm"></i>
+                            </label>
+                            <input type="file" id="chatImageInput" accept="image/*" class="hidden">
+                            
+                            <input type="text" id="chatInputMsg" placeholder="Aa" class="flex-1 bg-[#3a3b3c] border-0 rounded-full px-4 py-2.5 text-white outline-none text-xs placeholder-gray-400 focus:ring-1 focus:ring-brand-cyan min-w-0 shadow-inner">
+                            
+                            <button id="sendChatMsgBtn" class="text-brand-cyan hover:text-cyan-300 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition text-base">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -688,27 +774,47 @@
 
     <!-- Advanced Military-Grade XSS Defense & Input Sanitizer Engine -->
     <script>
+        // Splash Screen Fade-Out Timer
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splashScreen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.remove(), 600);
+                }
+            }, 3000); // 3 seconds animated neon logo intro
+        });
+
+        // Militarily Robust XSS Sanitization & DOMPurify Alternative
         window.escapeHTML = function(str) {
             if (!str) return '';
-            return String(str).replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/`/g, '&#96;');
         };
         
         window.sanitizeInput = function(inputStr) {
             if (!inputStr) return '';
             const tempDiv = document.createElement('div');
             tempDiv.textContent = inputStr;
-            return tempDiv.innerHTML;
+            let clean = tempDiv.innerHTML;
+            clean = clean.replace(/javascript:/gi, '')
+                         .replace(/on\w+\s*=/gi, '')
+                         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+            return clean;
         };
 
-        // Strict XSS & Malicious Script Injection Interceptor
+        // Strict XSS & Malicious Script Injection Interceptor for URLs and payloads
         (function secureGlobalShield() {
             try {
                 const params = new URLSearchParams(window.location.search);
-                params.forEach((value) => {
-                    if (/<script|javascript:|onerror=|onload=|eval\(|document\.cookie/i.test(value)) {
-                        console.warn("Security Alert: Malicious XSS payload neutralized.");
+                params.forEach((value, key) => {
+                    if (/<script|javascript:|onerror=|onload=|eval\(|document\.cookie|document\.domain|alert\(/i.test(value)) {
+                        console.warn("Security Alert: Malicious XSS/Script Injection payload neutralized in URL params.");
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                 });
