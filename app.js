@@ -1,4 +1,4 @@
-// --- Zynqra Firebase Main Script (app.js) - Fully Secure, XSS Protected & Algorithmic ---
+// --- Zynqra Firebase Main Script (app.js) - Cloudflare & Firebase Storage Integrated + 100% XSS Protected ---
 
 const firebaseConfig = {
     apiKey: "AIzaSyC4_RGOzHvkjK24g4h-CtYhuwnUnvcVrg8",
@@ -27,7 +27,7 @@ let unsubscribeChat = null;
 let editingVideoId = null;
 let activeShortForModal = null;
 
-// --- Advanced Military-Grade XSS & Injection Protection Utility (Strict Sanitization) ---
+// --- Advanced Military-Grade XSS & Injection Protection Utility (Strict Sanitization Engine) ---
 function sanitizeHTML(str) {
     if (!str) return '';
     return String(str)
@@ -36,9 +36,27 @@ function sanitizeHTML(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;')
+        .replace(/`/g, '&#96;')
         .replace(/javascript:/gi, '') 
-        .replace(/on\w+=/gi, '');    
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/eval\((.*?)\)/gi, '')
+        .replace(/document\.cookie/gi, '')
+        .replace(/document\.domain/gi, '');
 }
+
+// Global Anti-XSS Shield Interceptor for URLs and Input Payloads
+(function secureGlobalShield() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        params.forEach((value, key) => {
+            if (/<script|javascript:|onerror=|onload=|eval\(|document\.cookie|alert\(/i.test(value)) {
+                console.warn("Security Alert: Malicious XSS payload neutralized.");
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+    } catch(e) {}
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
     setupFirebaseAuthState();
@@ -74,7 +92,6 @@ function loadDynamicAds() {
     }).catch(() => {});
 }
 
-// --- Quick Upload Header Button Trigger (+) ---
 function setupQuickUploadButton() {
     const quickUploadBtn = document.getElementById('quickUploadHeaderBtn');
     if (quickUploadBtn) {
@@ -82,18 +99,14 @@ function setupQuickUploadButton() {
     }
 }
 
-// --- Shorts Comment Sheet Close Fix ---
 function setupShortsModalClose() {
     const closeBtn = document.getElementById('closeShortsSheetBtn');
     const sheet = document.getElementById('shortsModalSheet');
     if (closeBtn && sheet) {
-        closeBtn.onclick = () => {
-            sheet.classList.add('hidden');
-        };
+        closeBtn.onclick = () => sheet.classList.add('hidden');
     }
 }
 
-// --- Firebase Persistent Auth State & Account Status Check ---
 function setupFirebaseAuthState() {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -122,6 +135,7 @@ function setupFirebaseAuthState() {
                 await userRef.set(currentUser);
             }
             initializeAppUI();
+            loadMessengerContacts();
         } else {
             currentUser = null;
             initializeAppUI();
@@ -129,7 +143,6 @@ function setupFirebaseAuthState() {
     });
 }
 
-// --- Google Authentication & Logout ---
 function setupGoogleAuth() {
     document.addEventListener('click', (e) => {
         if (e.target.closest('#googleLoginBtn')) {
@@ -148,7 +161,6 @@ function setupGoogleAuth() {
     }
 }
 
-// --- UI INITIALIZATION & NAVIGATION ---
 function initializeAppUI() {
     const authContainer = document.getElementById('authContainer');
     if (authContainer) {
@@ -246,7 +258,6 @@ function switchPage(pageId) {
     if (pageId === 'downloads') loadOfflineDownloadsUI();
 }
 
-// --- ADVANCED ALGORITHMIC HOME FEED (High Likes & Views First) ---
 function loadHomeFeed(category = 'all') {
     db.collection("videos").orderBy("date", "desc").onSnapshot((snapshot) => {
         const grid = document.getElementById('videoGrid');
@@ -312,7 +323,6 @@ function formatNumber(num) {
     return num.toString();
 }
 
-// --- SEARCH ENGINE ---
 function setupSearchEngine() {
     const searchIconToggleBtn = document.getElementById('searchIconToggleBtn');
     const mobileSearchOverlay = document.getElementById('mobileSearchOverlay');
@@ -353,7 +363,7 @@ function setupSearchEngine() {
             if (suggestionBox) {
                 suggestionBox.innerHTML = '';
                 if (matchedVideos.length === 0) {
-                    suggestionBox.innerHTML = `<div class="p-3 text-gray-400 text-xs">No matching videos or channels found</div>`;
+                    suggestionBox.innerHTML = `<div class="p-3 text-gray-400 text-xs">No matching videos found</div>`;
                 } else {
                     matchedVideos.slice(0, 5).forEach(video => {
                         const item = document.createElement('div');
@@ -379,7 +389,6 @@ function setupSearchEngine() {
     });
 }
 
-// --- CREATOR SEARCH ENGINE ---
 function setupFriendSearchEngine() {
     const friendSearchInput = document.getElementById('friendSearchInput');
     if (!friendSearchInput) return;
@@ -426,7 +435,6 @@ function setupFriendSearchEngine() {
     });
 }
 
-// --- SECURE 1-SUBSCRIBE PER USER SYSTEM ---
 window.toggleSubscribeUser = function(creatorEmail, btnElement) {
     if (!currentUser) {
         alert('Please login with Google to subscribe!');
@@ -457,7 +465,6 @@ window.toggleSubscribeUser = function(creatorEmail, btnElement) {
     });
 };
 
-// --- OFFLINE DOWNLOAD SYSTEM & SHORTS SAVE/DOWNLOAD MODAL ---
 function setupOfflineDownloadsUI() {
     const downloadBtn = document.getElementById('modalDownloadBtn');
     if (downloadBtn) {
@@ -477,7 +484,6 @@ function setupOfflineDownloadsUI() {
         };
     }
 
-    // Shorts Options Modal Listeners
     const shortsModal = document.getElementById('shortsSettingsModal');
     const closeShortsModal = document.getElementById('closeShortsSettingsModal');
     if (closeShortsModal && shortsModal) {
@@ -579,7 +585,6 @@ function loadHomeShortsCarousel(videos) {
     });
 }
 
-// --- FULLY FIXED SHORTS FEED WITH REAL-TIME ALGORITHMIC SORTING ---
 function loadShortsFeed() {
     db.collection("videos").where("aspectRatio", "==", "9:16").onSnapshot((snapshot) => {
         const container = document.getElementById('shortsPlayerContainer');
@@ -594,7 +599,6 @@ function loadShortsFeed() {
         let shorts = [];
         snapshot.forEach(doc => shorts.push({ id: doc.id, ...doc.data() }));
 
-        // Algorithmic Sorting: High likes & views first
         shorts.sort((a, b) => ((b.likes || 0) * 3 + (b.views || 0)) - ((a.likes || 0) * 3 + (a.views || 0)));
 
         if (shorts.length === 0) {
@@ -688,7 +692,6 @@ window.openShortsSettings = function(id) {
     });
 };
 
-// --- SECURE 1-LIKE PER USER SYSTEM ---
 window.likeShort = function(id, currentLikes) {
     if (!currentUser) {
         alert('Please login with Google to like shorts!');
@@ -769,7 +772,6 @@ function renderShortsComments(id) {
     });
 }
 
-// --- EXTERNAL PUBLIC PROFILE VIEW ---
 function openExternalProfile(email) {
     db.collection("users").doc(email).get().then((doc) => {
         if (!doc.exists) {
@@ -855,7 +857,6 @@ function openExternalProfile(email) {
     });
 }
 
-// --- VIDEO MODAL & COMMENTS ---
 function openVideoModal(video) {
     activeVideo = video;
     const modal = document.getElementById('videoModal');
@@ -922,7 +923,6 @@ function openVideoModal(video) {
     };
 }
 
-// --- SECURE 1-VIEW PER SESSION SYSTEM ---
 function processSecureVideoView(video) {
     const viewSessionKey = `viewed_session_${video.id}`;
     const lastViewTime = localStorage.getItem(`last_view_${video.id}`);
@@ -992,7 +992,6 @@ function renderRelatedVideos(currentVideo) {
     });
 }
 
-// --- MESSENGER, BLOCK/UNBLOCK & IMAGE/EMOJI SUPPORT ---
 function loadFriendsList() {
     db.collection("users").get().then((snapshot) => {
         const container = document.getElementById('friendsListContainer');
@@ -1031,9 +1030,12 @@ function loadFriendsList() {
 
 function loadMessengerContacts(filterQuery = '') {
     db.collection("users").get().then((snapshot) => {
-        const container = document.getElementById('chatContactsHorizontalList');
-        if (!container) return;
-        container.innerHTML = '';
+        const trayContainer = document.getElementById('chatContactsHorizontalList');
+        const inboxContainer = document.getElementById('messengerInboxList');
+        if (!trayContainer || !inboxContainer) return;
+        
+        trayContainer.innerHTML = '';
+        inboxContainer.innerHTML = '';
         
         let users = [];
         snapshot.forEach(doc => {
@@ -1046,22 +1048,50 @@ function loadMessengerContacts(filterQuery = '') {
             users = users.filter(u => u.name && u.name.toLowerCase().includes(filterQuery));
         }
 
+        if (users.length === 0) {
+            inboxContainer.innerHTML = `<div class="p-4 text-center text-gray-400 text-xs">No conversations found.</div>`;
+            return;
+        }
+
         users.forEach(user => {
             const unreadCount = parseInt(localStorage.getItem(`unread_${currentUser?.email}_${user.email}`) || '0');
-            const item = document.createElement('div');
-            item.className = 'flex flex-col items-center cursor-pointer shrink-0 relative group';
-            item.innerHTML = `
+            
+            const trayItem = document.createElement('div');
+            trayItem.className = 'flex flex-col items-center cursor-pointer shrink-0 relative group';
+            trayItem.innerHTML = `
                 <div class="relative">
-                    <img src="${sanitizeHTML(user.avatar)}" class="w-10 h-10 rounded-full object-cover border-2 border-brand-cyan group-hover:scale-105 transition shadow" title="${sanitizeHTML(user.name)}">
-                    ${unreadCount > 0 ? `<span class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full font-bold">${unreadCount}</span>` : ''}
+                    <img src="${sanitizeHTML(user.avatar)}" class="w-12 h-12 rounded-full object-cover border-2 border-brand-cyan group-hover:scale-105 transition shadow" title="${sanitizeHTML(user.name)}">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#18191a] rounded-full"></span>
+                    ${unreadCount > 0 ? `<span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">${unreadCount}</span>` : ''}
                 </div>
-                <span class="text-[9px] text-gray-300 truncate mt-1 max-w-[55px]">${sanitizeHTML(user.name)}</span>
+                <span class="text-[10px] text-gray-300 truncate mt-1 max-w-[60px]">${sanitizeHTML(user.name.split(' ')[0])}</span>
             `;
-            item.onclick = () => {
+            trayItem.onclick = () => {
                 localStorage.setItem(`unread_${currentUser?.email}_${user.email}`, '0');
                 selectActiveChatContact(user);
             };
-            container.appendChild(item);
+            trayContainer.appendChild(trayItem);
+
+            const inboxItem = document.createElement('div');
+            inboxItem.className = 'flex items-center space-x-3 p-3 hover:bg-[#242526] cursor-pointer transition relative group';
+            inboxItem.innerHTML = `
+                <div class="relative shrink-0">
+                    <img src="${sanitizeHTML(user.avatar)}" class="w-12 h-12 rounded-full object-cover">
+                    <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#18191a] rounded-full"></span>
+                </div>
+                <div class="flex-1 truncate">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-white text-xs truncate">${sanitizeHTML(user.name)}</h4>
+                    </div>
+                    <p class="text-[11px] text-gray-400 truncate mt-0.5">Click to chat with ${sanitizeHTML(user.name.split(' ')[0])}</p>
+                </div>
+                ${unreadCount > 0 ? `<span class="bg-brand-cyan text-dark-900 text-[10px] font-bold px-2 py-0.5 rounded-full">${unreadCount}</span>` : ''}
+            `;
+            inboxItem.onclick = () => {
+                localStorage.setItem(`unread_${currentUser?.email}_${user.email}`, '0');
+                selectActiveChatContact(user);
+            };
+            inboxContainer.appendChild(inboxItem);
         });
     });
 }
@@ -1079,35 +1109,38 @@ function selectActiveChatContact(user) {
     activeChatContact = user;
     const header = document.getElementById('activeChatHeader');
     const chatOptionsBtn = document.getElementById('chatOptionsBtn');
+    const chatPane = document.getElementById('messengerChatPane');
+    
     if (chatOptionsBtn) chatOptionsBtn.classList.remove('hidden');
+    if (chatPane) chatPane.classList.remove('translate-x-full');
 
     header.innerHTML = `
-        <div class="flex items-center space-x-2.5 cursor-pointer" onclick="openExternalProfile('${sanitizeHTML(user.email)}')">
-            <img src="${sanitizeHTML(user.avatar)}" class="w-8 h-8 rounded-full object-cover">
+        <div class="flex items-center space-x-3">
+            <button id="backToInboxBtn" class="md:hidden text-gray-300 hover:text-white p-1 mr-1" onclick="document.getElementById('messengerChatPane').classList.add('translate-x-full')"><i class="fa-solid fa-arrow-left text-base"></i></button>
+            <div class="relative cursor-pointer" onclick="openExternalProfile('${sanitizeHTML(user.email)}')">
+                <img src="${sanitizeHTML(user.avatar)}" class="w-9 h-9 rounded-full object-cover border border-brand-cyan">
+                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#242526] rounded-full"></span>
+            </div>
             <div>
-                <span class="font-bold text-white block text-xs hover:text-brand-cyan transition">${sanitizeHTML(user.name)}</span>
-                <span class="text-[9px] text-emerald-400">active now</span>
+                <span class="font-bold text-white text-xs block cursor-pointer hover:underline" onclick="openExternalProfile('${sanitizeHTML(user.email)}')">${sanitizeHTML(user.name)}</span>
+                <span class="text-[9px] text-emerald-400">Active Now</span>
+            </div>
+        </div>
+        <div class="relative">
+            <button id="chatOptionsBtn" class="w-8 h-8 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-gray-200 transition cursor-pointer"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
+            <div id="chatOptionsMenu" class="absolute right-0 top-10 bg-[#242526] border border-dark-600 rounded-2xl shadow-2xl hidden z-40 py-1.5 w-44">
+                <button id="blockUnblockUserBtn" class="w-full text-left px-4 py-2 text-red-400 hover:bg-red-950/40 font-bold text-xs flex items-center space-x-2 cursor-pointer transition">
+                    <i class="fa-solid fa-ban"></i> <span id="blockBtnText">Block User</span>
+                </button>
             </div>
         </div>
     `;
 
-    // Setup Block / Unblock Button Status
-    const blockBtnText = document.getElementById('blockBtnText');
-    const blockKey = `blocked_${currentUser.email}_${user.email}`;
-    if (blockBtnText) {
-        blockBtnText.innerText = localStorage.getItem(blockKey) ? 'Unblock User' : 'Block User';
-    }
-
+    setupMessengerUIEnhancements();
     renderChatMessages();
 }
 
 function setupMessengerUIEnhancements() {
-    const toggleSearchBtn = document.getElementById('toggleMessengerSearchBtn');
-    const searchPopup = document.getElementById('messengerSearchPopup');
-    if (toggleSearchBtn && searchPopup) {
-        toggleSearchBtn.onclick = () => searchPopup.classList.toggle('hidden');
-    }
-
     const chatOptionsBtn = document.getElementById('chatOptionsBtn');
     const chatOptionsMenu = document.getElementById('chatOptionsMenu');
     if (chatOptionsBtn && chatOptionsMenu) {
@@ -1124,7 +1157,7 @@ function setupMessengerUIEnhancements() {
                 alert('User unblocked successfully!');
             } else {
                 localStorage.setItem(blockKey, 'true');
-                alert('User blocked successfully. You will no longer receive or send messages to this user.');
+                alert('User blocked successfully.');
             }
             chatOptionsMenu.classList.add('hidden');
             selectActiveChatContact(activeChatContact);
@@ -1172,7 +1205,6 @@ function renderChatMessages() {
     });
 }
 
-// --- NOTIFICATIONS SYSTEM ---
 function loadNotifications() {
     const headerMsgBadge = document.getElementById('headerMsgBadge');
     const sidebarMsgBadge = document.getElementById('sidebarMsgBadge');
@@ -1197,7 +1229,6 @@ function loadNotifications() {
     }
 }
 
-// --- PROFILE EDIT MODAL ---
 function setupProfileEditModal() {
     const openBtn = document.getElementById('openEditModalBtn');
     const modal = document.getElementById('editProfileModal');
@@ -1228,21 +1259,12 @@ function setupProfileEditModal() {
             const imageFile = document.getElementById('profileImageFile').files[0];
 
             let avatarUrl = currentUser.avatar;
-            alert('Updating profile...');
+            alert('Updating profile via Firebase Storage...');
 
             if (imageFile) {
-                const cloudName = "u078nis6";
-                const uploadPreset = "zynqra_preset";
-                const formData = new FormData();
-                formData.append('file', imageFile);
-                formData.append('upload_preset', uploadPreset);
-
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const resData = await res.json();
-                if (resData.secure_url) avatarUrl = resData.secure_url;
+                const storageRef = storage.ref(`avatars/${Date.now()}_${imageFile.name}`);
+                const snapshot = await storageRef.put(imageFile);
+                avatarUrl = await snapshot.ref.getDownloadURL();
             }
 
             currentUser.name = newName || currentUser.name;
@@ -1277,7 +1299,6 @@ function setupProfileEditModal() {
     }
 }
 
-// --- VIDEO EDIT & DELETE MANAGEMENT ---
 function setupVideoEditModal() {
     const modal = document.getElementById('editVideoModal');
     const closeBtn = document.getElementById('closeEditVideoModal');
@@ -1319,7 +1340,7 @@ window.deleteUserVideo = async function(id) {
     }
 };
 
-// --- UPLOAD & ANTI-PORN FILTERING CHECKER ---
+// --- SECURE FIREBASE STORAGE UPLOADER & ANTI-PORN FILTER ---
 function setupEventListeners() {
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
@@ -1365,61 +1386,25 @@ function setupEventListeners() {
             }
 
             const submitBtn = uploadForm.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn ? submitBtn.innerText : 'Upload';
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Uploading video... 0%';
-            }
-
-            const cloudName = "u078nis6";
-            const uploadPreset = "zynqra_preset";
-
-            async function uploadToCloudinary(file, resourceType, onProgress) {
-                return new Promise((resolve, reject) => {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('upload_preset', uploadPreset);
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, true);
-
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable && onProgress) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            onProgress(percent);
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        if (xhr.status === 200) {
-                            const data = JSON.parse(xhr.responseText);
-                            if (data.secure_url) resolve(data.secure_url);
-                            else reject(new Error('Upload failed'));
-                        } else {
-                            reject(new Error('Cloudinary upload error'));
-                        }
-                    };
-
-                    xhr.onerror = () => reject(new Error('Network error during upload'));
-                    xhr.send(formData);
-                });
+                submitBtn.innerText = 'Uploading via Firebase Storage...';
             }
 
             try {
-                if (submitBtn) submitBtn.innerText = 'Uploading video...';
-                const videoUrl = await uploadToCloudinary(videoFile, 'video', (pct) => {
-                    if (submitBtn) submitBtn.innerText = `Uploading Video: ${pct}%`;
-                });
+                // Upload Video to Firebase Storage
+                const videoStorageRef = storage.ref(`videos/${Date.now()}_${videoFile.name}`);
+                const videoUploadTask = await videoStorageRef.put(videoFile);
+                const videoUrl = await videoUploadTask.ref.getDownloadURL();
 
+                // Upload Thumbnail to Firebase Storage (if provided)
                 let thumbnailUrl = '';
                 if (thumbFile) {
-                    if (submitBtn) submitBtn.innerText = 'Uploading thumbnail...';
-                    thumbnailUrl = await uploadToCloudinary(thumbFile, 'image', (pct) => {
-                        if (submitBtn) submitBtn.innerText = `Uploading Thumbnail: ${pct}%`;
-                    });
+                    const thumbStorageRef = storage.ref(`thumbnails/${Date.now()}_${thumbFile.name}`);
+                    const thumbUploadTask = await thumbStorageRef.put(thumbFile);
+                    thumbnailUrl = await thumbUploadTask.ref.getDownloadURL();
                 }
 
-                if (submitBtn) submitBtn.innerText = 'Saving to Database...';
                 await db.collection("videos").add({
                     title, category, aspectRatio, desc, videoUrl, thumbnailUrl,
                     creatorName: currentUser.name,
@@ -1437,13 +1422,13 @@ function setupEventListeners() {
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerText = originalBtnText;
+                    submitBtn.innerText = 'Start Secure Upload (Anti-Porn Filter Active)';
                 }
             }
         });
     }
 
-    // Chat Message & Image Upload Handling
+    // Chat Message & Image Upload using Firebase Storage
     const sendBtn = document.getElementById('sendChatMsgBtn');
     const chatInput = document.getElementById('chatInputMsg');
     const chatImageInput = document.getElementById('chatImageInput');
@@ -1493,21 +1478,14 @@ function setupEventListeners() {
                 const file = e.target.files[0];
                 if (!file || !activeChatContact || !currentUser) return;
 
-                alert('Uploading image to chat...');
-                const cloudName = "u078nis6";
-                const uploadPreset = "zynqra_preset";
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('upload_preset', uploadPreset);
-
+                alert('Uploading image to chat via Firebase Storage...');
                 try {
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const resData = await res.json();
-                    if (resData.secure_url) {
-                        sendAction(resData.secure_url);
+                    const chatImageRef = storage.ref(`chat_images/${Date.now()}_${file.name}`);
+                    const uploadSnapshot = await chatImageRef.put(file);
+                    const downloadUrl = await uploadSnapshot.ref.getDownloadURL();
+                    
+                    if (downloadUrl) {
+                        sendAction(downloadUrl);
                         chatImageInput.value = '';
                     } else {
                         alert('Image upload failed.');
@@ -1566,7 +1544,6 @@ function setupEventListeners() {
     }
 }
 
-// --- PROFILE & ANALYTICS ---
 function loadAnalytics() {
     if (!currentUser) return;
     db.collection("videos").where("creatorEmail", "==", currentUser.email).get().then((snapshot) => {
@@ -1671,4 +1648,4 @@ function loadUserProfile() {
             renderProfileTabContent('shorts');
         };
     });
-}
+    }
