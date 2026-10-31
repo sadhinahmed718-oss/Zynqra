@@ -103,7 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setupShortsModalClose();
     loadDynamicAds();
     setupMessengerUIEnhancements();
+    registerPWAStorageAndSecurityWorker();
 });
+
+// --- Secure PWA Service Worker Registration & Anti-Cache Hijack ---
+function registerPWAStorageAndSecurityWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then((reg) => {
+                    console.log('Zynqra Secure PWA Registered:', reg.scope);
+                })
+                .catch((err) => {
+                    console.warn('PWA Registration blocked or failed:', err);
+                });
+        });
+    }
+}
 
 // --- Dynamic AdSense & Admin Banner Integration ---
 function loadDynamicAds() {
@@ -152,16 +168,20 @@ function setupFirebaseAuthState() {
                     email: sanitizeHTML(user.email),
                     avatar: sanitizeHTML(user.photoURL || 'https://picsum.photos/seed/user/100/100'),
                     subs: 0,
+                    followersCount: 0,
+                    followingCount: 0,
                     strikes: 0,
                     verified: false,
                     isBanned: false,
                     lastProfileUpdate: 0,
-                    bio: 'Welcome to my Zynqra channel!'
+                    bio: 'Welcome to my Zynqra channel!',
+                    preferredCategories: []
                 };
                 await userRef.set(currentUser);
             }
             initializeAppUI();
             loadMessengerContacts();
+            loadNotificationsList();
         } else {
             currentUser = null;
             initializeAppUI();
@@ -230,11 +250,20 @@ function setupNavigation() {
     const bottomNavHome = document.getElementById('bottomNavHome');
     if (bottomNavHome) bottomNavHome.onclick = (e) => { e.preventDefault(); switchPage('home'); };
 
+    const bottomNavShorts = document.getElementById('bottomNavShorts');
+    if (bottomNavShorts) bottomNavShorts.onclick = (e) => { e.preventDefault(); switchPage('shorts'); };
+
     const bottomNavUpload = document.getElementById('bottomNavUpload');
     if (bottomNavUpload) bottomNavUpload.onclick = (e) => { e.preventDefault(); switchPage('upload'); };
 
+    const bottomNavPosts = document.getElementById('bottomNavPosts');
+    if (bottomNavPosts) bottomNavPosts.onclick = (e) => { e.preventDefault(); switchPage('posts'); };
+
     const bottomNavMessenger = document.getElementById('bottomNavMessenger');
     if (bottomNavMessenger) bottomNavMessenger.onclick = (e) => { e.preventDefault(); switchPage('messenger'); };
+
+    const headerNotificationBtn = document.getElementById('headerNotificationBtn');
+    if (headerNotificationBtn) headerNotificationBtn.onclick = () => switchPage('notifications');
 
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     if (hamburgerBtn) {
@@ -288,6 +317,7 @@ function switchPage(pageId) {
     if (pageId === 'shorts') loadShortsFeed();
     if (pageId === 'posts') loadPostsFeed();
     if (pageId === 'downloads') loadOfflineDownloadsUI();
+    if (pageId === 'notifications') loadNotificationsList();
 }
 
 // --- Facebook Style Photo Posts Engine ---
@@ -346,7 +376,7 @@ function setupPostCreationUI() {
             publishBtn.disabled = true;
 
             try {
-                await db.collection("posts").add({
+                const postRef = await db.collection("posts").add({
                     caption: caption,
                     imageUrl: postImageBase64 || '',
                     creatorName: currentUser.name,
@@ -356,6 +386,13 @@ function setupPostCreationUI() {
                     comments: [],
                     date: new Date().toISOString().split('T')[0],
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Send notifications to all followers
+                await notifyFollowers(currentUser.email, {
+                    type: 'post',
+                    title: `${currentUser.name} published a new post`,
+                    targetId: postRef.id
                 });
 
                 showToast('Post published successfully!');
@@ -370,6 +407,25 @@ function setupPostCreationUI() {
                 publishBtn.disabled = false;
             }
         };
+    }
+}
+
+async function notifyFollowers(creatorEmail, notificationData) {
+    try {
+        const followersSnap = await db.collection("follows").where("followingEmail", "==", creatorEmail).get();
+        followersSnap.forEach(async (doc) => {
+            const followerEmail = doc.data().followerEmail;
+            await db.collection("notifications").add({
+                recipient: followerEmail,
+                sender: notificationData.title,
+                text: notificationData.title,
+                date: new Date().toISOString(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                targetId: notificationData.targetId || ''
+            });
+        });
+    } catch (e) {
+        console.error("Error notifying followers:", e);
     }
 }
 
@@ -473,26 +529,51 @@ window.commentOnPost = function(postId) {
     });
 };
 
-function loadHomeFeed(category = 'all') {
-    db.collection("videos").orderBy("date", "desc").onSnapshot((snapshot) => {
+// --- Rule-based & Collaborative Filtering Algorithm for Home Feed ---
+async function loadHomeFeed(category = 'all') {
+    db.collection("videos").orderBy("date", "desc").onSnapshot(async (snapshot) => {
         const grid = document.getElementById('videoGrid');
         if (!grid) return;
         grid.innerHTML = '';
         let videos = [];
         snapshot.forEach(doc => videos.push({ id: doc.id, ...doc.data() }));
-        
-        videos.sort((a, b) => {
-            const scoreA = (b.likes || 0) * 3 + (b.views || 0);
-            const scoreB = (a.likes || 0) * 3 + (a.views || 0);
-            return scoreB - scoreA || new Date(b.date) - new Date(a.date);
-        });
         globalAllVideos = videos;
 
-        const filtered = videos.filter(v => {
-            if (category === 'all') return v.aspectRatio !== '9:16';
-            if (category === 'shorts') return v.aspectRatio === '9:16';
-            return v.category === category && v.aspectRatio !== '9:16';
-        });
+        let filtered = [];
+
+        if (category === 'following') {
+            if (!currentUser) {
+                showToast('Please login to view your following feed!', 'error');
+                return;
+            }
+            const followSnap = await db.collection("follows").where("followerEmail", "==", currentUser.email).get();
+            const followingEmails = [];
+            followSnap.forEach(doc => followingEmails.push(doc.data().followingEmail));
+
+            filtered = videos.filter(v => followingEmails.includes(v.creatorEmail) && v.aspectRatio !== '9:16');
+        } else if (category === 'all' && currentUser) {
+            const userHistoryDoc = await db.collection("users").doc(currentUser.email).get();
+            const userFavCategories = userHistoryDoc.exists && userHistoryDoc.data().preferredCategories ? userHistoryDoc.data().preferredCategories : [];
+
+            videos.sort((a, b) => {
+                const scoreA = (userFavCategories.includes(a.category) ? 10 : 0) + (b.likes || 0) * 3 + (b.views || 0);
+                const scoreB = (userFavCategories.includes(b.category) ? 10 : 0) + (a.likes || 0) * 3 + (a.views || 0);
+                return scoreB - scoreA || new Date(b.date) - new Date(a.date);
+            });
+            filtered = videos.filter(v => v.aspectRatio !== '9:16');
+        } else {
+            videos.sort((a, b) => {
+                const scoreA = (b.likes || 0) * 3 + (b.views || 0);
+                const scoreB = (a.likes || 0) * 3 + (a.views || 0);
+                return scoreB - scoreA || new Date(b.date) - new Date(a.date);
+            });
+
+            filtered = videos.filter(v => {
+                if (category === 'all') return v.aspectRatio !== '9:16';
+                if (category === 'shorts') return v.aspectRatio === '9:16';
+                return v.category === category && v.aspectRatio !== '9:16';
+            });
+        }
 
         if (filtered.length === 0) {
             grid.innerHTML = `<p class="text-gray-500 text-xs col-span-full text-center py-10">No videos found.</p>`;
@@ -523,12 +604,31 @@ function loadHomeFeed(category = 'all') {
                     </div>
                 </div>
             `;
-            card.addEventListener('click', () => openVideoModal(video));
+            card.addEventListener('click', () => {
+                trackUserHistory(video.category);
+                openVideoModal(video);
+            });
             grid.appendChild(card);
         });
 
         loadHomeShortsCarousel(videos);
     });
+}
+
+async function trackUserHistory(category) {
+    if (!currentUser || !category) return;
+    try {
+        const userRef = db.collection("users").doc(currentUser.email);
+        const doc = await userRef.get();
+        if (doc.exists) {
+            let cats = doc.data().preferredCategories || [];
+            if (!cats.includes(category)) {
+                cats.push(category);
+                if (cats.length > 5) cats.shift();
+                await userRef.update({ preferredCategories: cats });
+            }
+        }
+    } catch(e) {}
 }
 
 function formatNumber(num) {
@@ -608,7 +708,7 @@ function setupFriendSearchEngine() {
     const friendSearchInput = document.getElementById('friendSearchInput');
     if (!friendSearchInput) return;
 
-    friendSearchInput.addEventListener('input', (e) => {
+    friendSearchInput.addEventListener('input', async (e) => {
         const query = sanitizeHTML(e.target.value.toLowerCase().trim());
         const container = document.getElementById('friendsListContainer');
         if (!container) return;
@@ -624,8 +724,21 @@ function setupFriendSearchEngine() {
             return;
         }
 
-        filteredUsers.forEach(user => {
-            const isSubbed = currentUser && localStorage.getItem(`subscribed_${currentUser.email}_${user.email}`);
+        for (const user of filteredUsers) {
+            const isFollowing = currentUser ? await checkIsFollowing(currentUser.email, user.email) : false;
+            const isFollowBack = currentUser ? await checkIsFollowing(user.email, currentUser.email) : false;
+
+            let btnText = 'Follow';
+            let btnClass = 'bg-white text-dark-900';
+
+            if (isFollowing) {
+                btnText = 'Following ✓';
+                btnClass = 'bg-dark-700 text-gray-300';
+            } else if (isFollowBack) {
+                btnText = 'Follow Back';
+                btnClass = 'bg-brand-cyan text-dark-900 font-bold';
+            }
+
             const card = document.createElement('div');
             card.className = 'bg-dark-800 border border-dark-700 p-3.5 rounded-2xl flex items-center justify-between shadow';
             card.innerHTML = `
@@ -633,12 +746,12 @@ function setupFriendSearchEngine() {
                     <img src="${sanitizeHTML(user.avatar)}" class="w-10 h-10 rounded-full object-cover border border-brand-cyan group-hover:scale-105 transition">
                     <div>
                         <h4 class="font-bold text-white text-xs group-hover:text-brand-cyan transition">${sanitizeHTML(user.name)}</h4>
-                        <p class="text-[10px] text-gray-400">${formatNumber(user.subs || 0)} subscribers • ${formatNumber(user.totalViews || 0)} Views</p>
+                        <p class="text-[10px] text-gray-400">${formatNumber(user.followersCount || 0)} Followers • ${formatNumber(user.totalViews || 0)} Views</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button onclick="toggleSubscribeUser('${sanitizeHTML(user.email)}', this)" class="${isSubbed ? 'bg-dark-700 text-gray-300' : 'bg-white text-dark-900'} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow">
-                        ${isSubbed ? 'Subscribed ✓' : 'Subscribe'}
+                    <button onclick="toggleFollowUser('${sanitizeHTML(user.email)}', this)" class="${btnClass} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow">
+                        ${btnText}
                     </button>
                     <button onclick="openChatWithUser('${sanitizeHTML(user.email)}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 shadow">
                         <i class="fa-solid fa-message"></i> <span>Message</span>
@@ -646,38 +759,58 @@ function setupFriendSearchEngine() {
                 </div>
             `;
             container.appendChild(card);
-        });
+        }
     });
 }
 
-window.toggleSubscribeUser = function(creatorEmail, btnElement) {
+async function checkIsFollowing(followerEmail, followingEmail) {
+    try {
+        const snap = await db.collection("follows")
+            .where("followerEmail", "==", followerEmail)
+            .where("followingEmail", "==", followingEmail)
+            .get();
+        return !snap.empty;
+    } catch(e) {
+        return false;
+    }
+}
+
+window.toggleFollowUser = async function(creatorEmail, btnElement) {
     if (!currentUser) {
-        showToast('Please login with Google to subscribe!', 'error');
+        showToast('Please login with Google to follow creators!', 'error');
         return;
     }
     if (currentUser.email === creatorEmail) {
-        showToast('You cannot subscribe to your own channel!', 'error');
+        showToast('You cannot follow yourself!', 'error');
         return;
     }
 
-    const subKey = `subscribed_${currentUser.email}_${creatorEmail}`;
-    db.collection("users").doc(creatorEmail).get().then(doc => {
-        let currentSubs = doc.exists ? (doc.data().subs || 0) : 0;
-        if (localStorage.getItem(subKey)) {
-            localStorage.removeItem(subKey);
-            currentSubs = Math.max(0, currentSubs - 1);
-            btnElement.innerText = 'Subscribe';
-            btnElement.className = 'bg-white text-dark-900 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
-            showToast('Unsubscribed successfully.');
-        } else {
-            localStorage.setItem(subKey, 'true');
-            currentSubs += 1;
-            btnElement.innerText = 'Subscribed ✓';
-            btnElement.className = 'bg-dark-700 text-gray-300 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
-            showToast('Successfully subscribed!');
-        }
-        db.collection("users").doc(creatorEmail).update({ subs: currentSubs });
-    });
+    const followRef = db.collection("follows");
+    const q = followRef.where("followerEmail", "==", currentUser.email).where("followingEmail", "==", creatorEmail);
+    const snap = await q.get();
+
+    const creatorUserDoc = await db.collection("users").doc(creatorEmail).get();
+    let currentFollowers = creatorUserDoc.exists ? (creatorUserDoc.data().followersCount || 0) : 0;
+
+    if (!snap.empty) {
+        const docId = snap.docs[0].id;
+        await followRef.doc(docId).delete();
+        currentFollowers = Math.max(0, currentFollowers - 1);
+        btnElement.innerText = 'Follow';
+        btnElement.className = 'bg-white text-dark-900 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
+        showToast('Unfollowed successfully.');
+    } else {
+        await followRef.add({
+            followerEmail: currentUser.email,
+            followingEmail: creatorEmail,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        currentFollowers += 1;
+        btnElement.innerText = 'Following ✓';
+        btnElement.className = 'bg-dark-700 text-gray-300 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow';
+        showToast('Successfully followed!');
+    }
+    await db.collection("users").doc(creatorEmail).update({ followersCount: currentFollowers });
 };
 
 function setupOfflineDownloadsUI() {
@@ -801,7 +934,7 @@ function loadHomeShortsCarousel(videos) {
 }
 
 function loadShortsFeed() {
-    db.collection("videos").where("aspectRatio", "==", "9:16").onSnapshot((snapshot) => {
+    db.collection("videos").where("aspectRatio", "==", "9:16").onSnapshot(async (snapshot) => {
         const container = document.getElementById('shortsPlayerContainer');
         if (!container) return;
         
@@ -821,8 +954,20 @@ function loadShortsFeed() {
             return;
         }
 
-        shorts.forEach(short => {
-            const isSubbed = currentUser && localStorage.getItem(`subscribed_${currentUser.email}_${short.creatorEmail}`);
+        for (const short of shorts) {
+            const isFollowing = currentUser ? await checkIsFollowing(currentUser.email, short.creatorEmail) : false;
+            const isFollowBack = currentUser ? await checkIsFollowing(short.creatorEmail, currentUser.email) : false;
+
+            let followBtnText = 'Follow';
+            let followBtnClass = 'bg-white text-dark-900';
+            if (isFollowing) {
+                followBtnText = 'Following ✓';
+                followBtnClass = 'bg-dark-700 text-gray-300';
+            } else if (isFollowBack) {
+                followBtnText = 'Follow Back';
+                followBtnClass = 'bg-brand-cyan text-dark-900 font-bold';
+            }
+
             const slide = document.createElement('div');
             slide.className = 'shorts-slide w-full h-full relative flex items-center justify-center bg-black snap-start shrink-0';
             
@@ -844,8 +989,8 @@ function loadShortsFeed() {
                                     <span class="text-[9px] text-gray-400">${formatNumber(short.views || 0)} views</span>
                                 </div>
                             </div>
-                            <button onclick="toggleSubscribeUser('${sanitizeHTML(short.creatorEmail)}', this)" class="${isSubbed ? 'bg-dark-700 text-gray-300' : 'bg-white text-dark-900'} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-md hover:scale-105 shrink-0">
-                                ${isSubbed ? 'Subscribed ✓' : 'Subscribe'}
+                            <button onclick="toggleFollowUser('${sanitizeHTML(short.creatorEmail)}', this)" class="${followBtnClass} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-md hover:scale-105 shrink-0">
+                                ${followBtnText}
                             </button>
                         </div>
                         <p class="text-xs text-gray-100 line-clamp-2">${sanitizeHTML(short.title)}</p>
@@ -876,7 +1021,7 @@ function loadShortsFeed() {
                 }
             });
             container.appendChild(slide);
-        });
+        }
 
         const observerOptions = { root: container, threshold: 0.6 };
         const observer = new IntersectionObserver((entries) => {
@@ -988,8 +1133,8 @@ function renderShortsComments(id) {
     });
 }
 
-function openExternalProfile(email) {
-    db.collection("users").doc(email).get().then((doc) => {
+async function openExternalProfile(email) {
+    db.collection("users").doc(email).get().then(async (doc) => {
         if (!doc.exists) {
             showToast('User profile not found.', 'error');
             return;
@@ -1001,7 +1146,7 @@ function openExternalProfile(email) {
         document.getElementById('extProfileName').innerText = user.name;
         document.getElementById('extProfileEmail').innerText = user.email;
         document.getElementById('extProfileBio').innerText = user.bio || 'No bio added.';
-        document.getElementById('extProfileSubs').innerText = `${formatNumber(user.subs || 0)} Subscribers`;
+        document.getElementById('extProfileSubs').innerText = `${formatNumber(user.followersCount || 0)} Followers`;
         
         const verifiedIcon = document.getElementById('extProfileNameVerifiedIcon');
         if (verifiedIcon) {
@@ -1010,16 +1155,29 @@ function openExternalProfile(email) {
         }
 
         const subBtn = document.getElementById('extSubscribeBtn');
-        const isSubbed = currentUser && localStorage.getItem(`subscribed_${currentUser.email}_${user.email}`);
+        const isFollowing = currentUser ? await checkIsFollowing(currentUser.email, user.email) : false;
+        const isFollowBack = currentUser ? await checkIsFollowing(user.email, currentUser.email) : false;
+
+        let btnText = 'Follow';
+        let btnClass = 'bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow';
+
+        if (isFollowing) {
+            btnText = 'Following ✓';
+            btnClass = 'bg-dark-700 text-gray-300 font-bold px-4 py-2 rounded-2xl text-xs shadow';
+        } else if (isFollowBack) {
+            btnText = 'Follow Back';
+            btnClass = 'bg-brand-cyan text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs shadow';
+        }
+
         if (subBtn) {
-            subBtn.innerText = isSubbed ? 'Subscribed ✓' : 'Subscribe';
-            subBtn.className = isSubbed ? 'bg-dark-700 text-gray-300 font-bold px-4 py-2 rounded-2xl text-xs cursor-default shadow' : 'bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow';
+            subBtn.innerText = btnText;
+            subBtn.className = btnClass;
             subBtn.onclick = () => {
                 if (!currentUser) {
-                    showToast('Please login to subscribe!', 'error');
+                    showToast('Please login to follow creators!', 'error');
                     return;
                 }
-                toggleSubscribeUser(user.email, subBtn);
+                toggleFollowUser(user.email, subBtn);
             };
         }
 
@@ -1105,7 +1263,7 @@ function openExternalProfile(email) {
     });
 }
 
-function openVideoModal(video) {
+async function openVideoModal(video) {
     activeVideo = video;
     const modal = document.getElementById('videoModal');
     const player = document.getElementById('modalVideoPlayer');
@@ -1118,10 +1276,34 @@ function openVideoModal(video) {
     document.getElementById('modalVideoDate').innerText = video.date || '2026';
     document.getElementById('modalVideoDescText').innerText = video.desc || 'No description provided.';
 
-    db.collection("users").doc(video.creatorEmail).get().then(doc => {
-        const subsCount = doc.exists ? (doc.data().subs || 0) : 0;
-        document.getElementById('modalCreatorSubs').innerText = `${formatNumber(subsCount)} subscribers`;
-    });
+    const userDoc = await db.collection("users").doc(video.creatorEmail).get();
+    const followersCount = userDoc.exists ? (userDoc.data().followersCount || 0) : 0;
+    document.getElementById('modalCreatorSubs').innerText = `${formatNumber(followersCount)} followers`;
+
+    const isFollowing = currentUser ? await checkIsFollowing(currentUser.email, video.creatorEmail) : false;
+    const isFollowBack = currentUser ? await checkIsFollowing(video.creatorEmail, currentUser.email) : false;
+
+    const modalSubscribeBtn = document.getElementById('modalSubscribeBtn');
+    if (modalSubscribeBtn) {
+        if (isFollowing) {
+            modalSubscribeBtn.innerText = 'Following ✓';
+            modalSubscribeBtn.className = 'bg-dark-700 text-gray-300 px-4 py-2 rounded-full font-bold text-xs cursor-pointer shadow';
+        } else if (isFollowBack) {
+            modalSubscribeBtn.innerText = 'Follow Back';
+            modalSubscribeBtn.className = 'bg-brand-cyan text-dark-900 px-4 py-2 rounded-full font-bold text-xs cursor-pointer shadow';
+        } else {
+            modalSubscribeBtn.innerText = 'Follow';
+            modalSubscribeBtn.className = 'bg-white text-dark-900 px-4 py-2 rounded-full font-bold hover:bg-gray-200 transition text-xs cursor-pointer shadow';
+        }
+
+        modalSubscribeBtn.onclick = () => {
+            if (!currentUser) {
+                showToast('Please login to follow creators!', 'error');
+                return;
+            }
+            toggleFollowUser(video.creatorEmail, modalSubscribeBtn);
+        };
+    }
 
     const creatorClick = document.getElementById('modalCreatorProfileClick');
     if (creatorClick) {
@@ -1241,7 +1423,7 @@ function renderRelatedVideos(currentVideo) {
 }
 
 function loadFriendsList() {
-    db.collection("users").get().then((snapshot) => {
+    db.collection("users").get().then(async (snapshot) => {
         const container = document.getElementById('friendsListContainer');
         if (!container) return;
         container.innerHTML = '';
@@ -1249,9 +1431,22 @@ function loadFriendsList() {
         snapshot.forEach(doc => users.push(doc.data()));
         globalAllUsers = users;
 
-        users.forEach(user => {
-            if (currentUser && user.email === currentUser.email) return;
-            const isSubbed = currentUser && localStorage.getItem(`subscribed_${currentUser.email}_${user.email}`);
+        for (const user of users) {
+            if (currentUser && user.email === currentUser.email) continue;
+            const isFollowing = currentUser ? await checkIsFollowing(currentUser.email, user.email) : false;
+            const isFollowBack = currentUser ? await checkIsFollowing(user.email, currentUser.email) : false;
+
+            let btnText = 'Follow';
+            let btnClass = 'bg-white text-dark-900';
+
+            if (isFollowing) {
+                btnText = 'Following ✓';
+                btnClass = 'bg-dark-700 text-gray-300';
+            } else if (isFollowBack) {
+                btnText = 'Follow Back';
+                btnClass = 'bg-brand-cyan text-dark-900 font-bold';
+            }
+
             const card = document.createElement('div');
             card.className = 'bg-dark-800 border border-dark-700 p-3.5 rounded-2xl flex items-center justify-between shadow';
             card.innerHTML = `
@@ -1259,12 +1454,12 @@ function loadFriendsList() {
                     <img src="${sanitizeHTML(user.avatar)}" class="w-10 h-10 rounded-full object-cover border border-brand-cyan group-hover:scale-105 transition">
                     <div>
                         <h4 class="font-bold text-white text-xs group-hover:text-brand-cyan transition">${sanitizeHTML(user.name)}</h4>
-                        <p class="text-[10px] text-gray-400">${formatNumber(user.subs || 0)} subscribers • ${formatNumber(user.totalViews || 0)} Views</p>
+                        <p class="text-[10px] text-gray-400">${formatNumber(user.followersCount || 0)} Followers • ${formatNumber(user.totalViews || 0)} Views</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button onclick="toggleSubscribeUser('${sanitizeHTML(user.email)}', this)" class="${isSubbed ? 'bg-dark-700 text-gray-300' : 'bg-white text-dark-900'} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow">
-                        ${isSubbed ? 'Subscribed ✓' : 'Subscribe'}
+                    <button onclick="toggleFollowUser('${sanitizeHTML(user.email)}', this)" class="${btnClass} px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow">
+                        ${btnText}
                     </button>
                     <button onclick="openChatWithUser('${sanitizeHTML(user.email)}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 shadow">
                         <i class="fa-solid fa-message"></i> <span>Message</span>
@@ -1272,7 +1467,7 @@ function loadFriendsList() {
                 </div>
             `;
             container.appendChild(card);
-        });
+        }
     });
 }
 
@@ -1454,27 +1649,52 @@ function renderChatMessages() {
 }
 
 function loadNotifications() {
-    const headerMsgBadge = document.getElementById('headerMsgBadge');
-    const sidebarMsgBadge = document.getElementById('sidebarMsgBadge');
-    const bottomMsgBadge = document.getElementById('bottomMsgBadge');
+    const headerNotificationBadge = document.getElementById('headerNotificationBadge');
 
     if (currentUser) {
-        db.collection("notifications").where("recipient", "==", currentUser.email).orderBy("date", "desc").onSnapshot((snapshot) => {
+        db.collection("notifications").where("recipient", "==", currentUser.email).orderBy("timestamp", "desc").onSnapshot((snapshot) => {
             if (!snapshot.empty) {
                 const countStr = snapshot.size.toString();
-                [headerMsgBadge, sidebarMsgBadge, bottomMsgBadge].forEach(badge => {
-                    if (badge) {
-                        badge.innerText = countStr;
-                        badge.classList.remove('hidden');
-                    }
-                });
+                if (headerNotificationBadge) {
+                    headerNotificationBadge.innerText = countStr;
+                    headerNotificationBadge.classList.remove('hidden');
+                }
             } else {
-                [headerMsgBadge, sidebarMsgBadge, bottomMsgBadge].forEach(badge => {
-                    if (badge) badge.classList.add('hidden');
-                });
+                if (headerNotificationBadge) headerNotificationBadge.classList.add('hidden');
             }
         });
     }
+}
+
+function loadNotificationsList() {
+    const container = document.getElementById('notificationsListContainer');
+    if (!container || !currentUser) return;
+
+    db.collection("notifications").where("recipient", "==", currentUser.email).orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+        container.innerHTML = '';
+        if (snapshot.empty) {
+            container.innerHTML = `<div class="text-center py-8 text-gray-500 text-xs">No notifications yet. Follow creators to receive instant alerts when they post!</div>`;
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const n = doc.data();
+            const item = document.createElement('div');
+            item.className = 'bg-dark-900 border border-dark-700 p-3.5 rounded-2xl flex items-center justify-between shadow';
+            item.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 bg-amber-400/10 rounded-full flex items-center justify-center text-amber-400 shrink-0">
+                        <i class="fa-solid fa-bell text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-white text-xs font-bold">${sanitizeHTML(n.text)}</p>
+                        <span class="text-[9px] text-gray-400">${new Date(n.date).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    });
 }
 
 function setupProfileEditModal() {
@@ -1650,13 +1870,20 @@ function setupEventListeners() {
                     thumbnailUrl = await thumbUploadTask.ref.getDownloadURL();
                 }
 
-                await db.collection("videos").add({
+                const videoRef = await db.collection("videos").add({
                     title, category, aspectRatio, desc, videoUrl, thumbnailUrl,
                     creatorName: currentUser.name,
                     creatorEmail: currentUser.email,
                     creatorAvatar: currentUser.avatar,
                     likes: 0, views: 0,
-                    date: new Date().toISOString().split('T')[0]
+                    date: new Date().toISOString().split('T')[0],
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await notifyFollowers(currentUser.email, {
+                    type: 'video',
+                    title: `${currentUser.name} uploaded a new video: "${title}"`,
+                    targetId: videoRef.id
                 });
 
                 showToast('Video successfully uploaded and published!');
@@ -1707,8 +1934,9 @@ function setupEventListeners() {
             db.collection("notifications").add({
                 recipient: activeChatContact.email,
                 sender: currentUser.name,
-                text: text || 'Sent an image',
-                date: new Date().toISOString()
+                text: `${currentUser.name} sent you a message`,
+                date: new Date().toISOString(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             chatInput.value = '';
@@ -1830,7 +2058,7 @@ function loadUserProfile() {
         document.getElementById('profileName').innerText = freshUser.name;
         document.getElementById('profileEmail').innerText = freshUser.email;
         document.getElementById('profileBio').innerText = freshUser.bio || 'No bio added.';
-        document.getElementById('profileSubCount').innerText = `${formatNumber(freshUser.subs || 0)} Subs`;
+        document.getElementById('profileSubCount').innerText = `${formatNumber(freshUser.followersCount || 0)} Followers`;
         document.getElementById('profileStrikeCount').innerText = `${freshUser.strikes || 0} Strikes`;
 
         const verifiedBadge = document.getElementById('profileVerifiedBadge');
