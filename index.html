@@ -167,18 +167,6 @@
                 </svg>
                 <span class="font-black text-sm sm:text-base tracking-wider bg-gradient-to-r from-brand-cyan to-brand-red bg-clip-text text-transparent">ZYNQRA</span>
             </a>
-            
-            <!-- Professional Spaced Shorts & Posts Header Buttons -->
-            <div class="flex items-center space-x-2.5 pl-1">
-                <button id="headerShortsBtn" class="bg-gradient-to-r from-amber-500/20 to-brand-red/25 hover:from-amber-500/30 hover:to-brand-red/40 border border-amber-500/40 text-amber-400 px-3 py-1.5 rounded-2xl text-[11px] font-extrabold flex items-center space-x-2 transition-all duration-300 cursor-pointer shadow-lg hover:scale-105">
-                    <i class="fa-solid fa-bolt text-amber-400 animate-pulse"></i>
-                    <span class="tracking-wide hidden xs:inline">Shorts</span>
-                </button>
-                <button id="headerPostsBtn" class="bg-gradient-to-r from-brand-cyan/20 to-blue-600/25 hover:from-brand-cyan/30 hover:to-blue-600/40 border border-brand-cyan/40 text-brand-cyan px-3 py-1.5 rounded-2xl text-[11px] font-extrabold flex items-center space-x-2 transition-all duration-300 cursor-pointer shadow-lg hover:scale-105">
-                    <i class="fa-solid fa-images text-brand-cyan"></i>
-                    <span class="tracking-wide hidden xs:inline">Posts</span>
-                </button>
-            </div>
         </div>
 
         <!-- Search Engine -->
@@ -191,6 +179,12 @@
         </div>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Notification Bell Added to Top Header -->
+            <button id="headerNotificationBtn" class="relative p-2.5 hover:bg-dark-700/60 rounded-full text-amber-400 transition cursor-pointer" title="Notifications">
+                <i class="fa-solid fa-bell text-base"></i>
+                <span id="headerNotificationBadge" class="absolute top-1 right-1 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
+            </button>
+
             <button id="headerMessengerBtn" class="relative p-2.5 hover:bg-dark-700/60 rounded-full text-emerald-400 transition cursor-pointer hidden sm:flex" title="Messenger Chat">
                 <i class="fa-solid fa-message text-base"></i>
                 <span id="headerMsgBadge" class="absolute top-1 right-1 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
@@ -246,13 +240,11 @@
         
             <!-- HOME PAGE -->
             <section id="page-home" class="page-view space-y-5">
-                <!-- Category Chips with Shorts & Posts Buttons Right Between Shorts and Gaming -->
+                <!-- Category Chips with Filter Feed Algorithm -->
                 <div class="flex items-center space-x-2.5 overflow-x-auto hide-scrollbar pb-1 font-medium pt-1">
-                    <button data-category="all" class="category-chip bg-white text-dark-900 px-4 py-2 rounded-xl font-bold shrink-0 shadow-lg cursor-pointer">All</button>
+                    <button data-category="all" class="category-chip bg-white text-dark-900 px-4 py-2 rounded-xl font-bold shrink-0 shadow-lg cursor-pointer">All Feed</button>
+                    <button data-category="following" class="category-chip bg-dark-800 hover:bg-dark-700 text-pink-400 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer font-bold"><i class="fa-solid fa-user-check mr-1"></i> Following Feed</button>
                     <button data-category="shorts" class="category-chip bg-dark-800 hover:bg-dark-700 text-amber-400 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer font-bold">Shorts (9:16)</button>
-                    <button data-page-target="posts" class="category-chip bg-gradient-to-r from-brand-cyan/20 to-blue-600/20 hover:from-brand-cyan/30 hover:to-blue-600/30 border border-brand-cyan/40 text-brand-cyan px-4 py-2 rounded-xl shrink-0 transition cursor-pointer font-bold flex items-center space-x-1.5" onclick="switchPage('posts')">
-                        <i class="fa-solid fa-images"></i> <span>Posts</span>
-                    </button>
                     <button data-category="gaming" class="category-chip bg-dark-800 hover:bg-dark-700 text-gray-200 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer">Gaming</button>
                     <button data-category="music" class="category-chip bg-dark-800 hover:bg-dark-700 text-gray-200 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer">Music & Audio</button>
                     <button data-category="tech" class="category-chip bg-dark-800 hover:bg-dark-700 text-gray-200 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer">Tech & Coding</button>
@@ -370,9 +362,22 @@
                 </div>
                 <div class="bg-dark-800 border border-dark-700 rounded-2xl px-4 py-2 flex items-center space-x-2">
                     <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
-                    <input type="text" id="friendSearchInput" placeholder="Search creators by name to view profile..." class="w-full bg-transparent outline-none text-xs text-white placeholder-gray-500">
+                    <input type="text" id="friendSearchInput" placeholder="Search creators by name to view profile & follow back..." class="w-full bg-transparent outline-none text-xs text-white placeholder-gray-500">
                 </div>
                 <div id="friendsListContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </section>
+
+            <!-- NOTIFICATIONS PAGE -->
+            <section id="page-notifications" class="page-view hidden max-w-2xl mx-auto space-y-4">
+                <div class="bg-dark-800 border border-dark-700 rounded-3xl p-5 shadow-2xl space-y-3">
+                    <div class="flex items-center justify-between border-b border-dark-700 pb-3">
+                        <h2 class="text-sm font-bold text-white flex items-center"><i class="fa-solid fa-bell text-amber-400 mr-2"></i> Creator Notifications</h2>
+                        <span class="text-[10px] text-gray-400">Updates from followed channels</span>
+                    </div>
+                    <div id="notificationsListContainer" class="space-y-2.5">
+                        <div class="text-center py-8 text-gray-500 text-xs">No notifications yet. Follow creators to receive instant alerts when they post!</div>
+                    </div>
+                </div>
             </section>
 
             <!-- FACEBOOK-STYLE ULTRA-SECURE & FIXED MESSENGER PAGE -->
@@ -523,7 +528,7 @@
 
                     <div class="bg-dark-800 border border-dark-700 rounded-3xl p-5 shadow-xl space-y-2 relative overflow-hidden group">
                         <div class="flex items-center justify-between text-gray-400">
-                            <span class="text-xs font-semibold">Subscribers Count</span>
+                            <span class="text-xs font-semibold">Followers Count</span>
                             <i class="fa-solid fa-users text-pink-400 text-sm"></i>
                         </div>
                         <div id="analyticDashboardSubs" class="text-2xl font-black text-white">0</div>
@@ -566,7 +571,7 @@
                             <p id="profileEmail" class="text-[11px] text-gray-400">user@email.com</p>
                             <p id="profileBio" class="text-[11px] text-gray-300 italic">Add your bio...</p>
                             <div class="flex items-center justify-center sm:justify-start space-x-4 pt-1 text-[10px] text-gray-400">
-                                <span id="profileSubCount">0 Subs</span>
+                                <span id="profileSubCount">0 Followers</span>
                                 <span id="profileVideoCountBadge" class="text-brand-cyan font-bold">0 Videos</span>
                                 <span id="profilePostCountBadge" class="text-pink-400 font-bold">0 Posts</span>
                                 <span id="profileStrikeCount" class="text-red-400">0 Strikes</span>
@@ -604,13 +609,13 @@
                             <p id="extProfileEmail" class="text-[11px] text-gray-400">email@zynqra.com</p>
                             <p id="extProfileBio" class="text-[11px] text-gray-300 italic">Bio...</p>
                             <div class="flex items-center justify-center sm:justify-start space-x-4 pt-1 text-[10px]">
-                                <span id="extProfileSubs" class="text-brand-cyan font-bold">0 Subscribers</span>
+                                <span id="extProfileSubs" class="text-brand-cyan font-bold">0 Followers</span>
                                 <span id="extProfileVideoCount" class="text-gray-300 font-bold">0 Videos</span>
                                 <span id="extProfilePostCount" class="text-pink-400 font-bold">0 Posts</span>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button id="extSubscribeBtn" class="bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow">Subscribe</button>
+                            <button id="extSubscribeBtn" class="bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow">Follow</button>
                             <button id="extMessageBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-2xl text-xs font-semibold shadow cursor-pointer"><i class="fa-solid fa-message mr-1"></i> Message</button>
                         </div>
                     </div>
@@ -633,7 +638,7 @@
                     <p class="text-[11px] text-gray-300">Complete thresholds below and configure your preferred payout method to get your Verified Green Light Badge:</p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="bg-dark-900/80 p-3.5 rounded-2xl border border-dark-700">
-                            <div class="text-[10px] text-gray-400 mb-1">Subscribers</div>
+                            <div class="text-[10px] text-gray-400 mb-1">Followers</div>
                             <div class="text-sm font-bold text-white mb-1.5" id="subCountProgress">0 / 500</div>
                             <div class="w-full bg-dark-700 h-1.5 rounded-full overflow-hidden"><div id="subBar" class="bg-yellow-400 h-full w-0 transition-all"></div></div>
                         </div>
@@ -677,19 +682,29 @@
         </div>
     </main>
 
-    <!-- Professional Bottom Navigation Bar -->
+    <!-- Professional Bottom Navigation Bar with Requested Button Positions -->
     <nav class="fixed bottom-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-t border-dark-700/80 z-40 flex items-center justify-around px-2 shadow-2xl">
-        <button id="bottomNavHome" data-page="home" class="flex flex-col items-center justify-center text-brand-cyan w-1/3 py-1 cursor-pointer transition hover:text-white">
+        <button id="bottomNavHome" data-page="home" class="flex flex-col items-center justify-center text-brand-cyan w-1/4 py-1 cursor-pointer transition hover:text-white">
             <i class="fa-solid fa-house text-lg mb-0.5"></i>
             <span class="text-[10px] font-bold">Home</span>
         </button>
-        <button id="bottomNavUpload" data-page="upload" class="flex flex-col items-center justify-center text-dark-900 bg-gradient-to-r from-brand-cyan to-brand-red w-11 h-11 rounded-full shadow-lg cursor-pointer transform -translate-y-2 hover:scale-105 transition">
+        <!-- Shorts Button placed between Home and Upload (+) Button -->
+        <button id="bottomNavShorts" data-page="shorts" class="flex flex-col items-center justify-center text-gray-400 w-1/4 py-1 cursor-pointer transition hover:text-amber-400">
+            <i class="fa-solid fa-bolt text-lg mb-0.5"></i>
+            <span class="text-[10px] font-semibold">Shorts</span>
+        </button>
+        <button id="bottomNavUpload" data-page="upload" class="flex flex-col items-center justify-center text-dark-900 bg-gradient-to-r from-brand-cyan to-brand-red w-11 h-11 rounded-full shadow-lg cursor-pointer transform -translate-y-2 hover:scale-105 transition shrink-0">
             <i class="fa-solid fa-plus text-base font-black"></i>
         </button>
-        <button id="bottomNavMessenger" data-page="messenger" class="flex flex-col items-center justify-center text-gray-400 w-1/3 py-1 cursor-pointer transition hover:text-emerald-400 relative">
+        <!-- Posts Button placed between Upload (+) Button and Messenger -->
+        <button id="bottomNavPosts" data-page="posts" class="flex flex-col items-center justify-center text-gray-400 w-1/4 py-1 cursor-pointer transition hover:text-brand-cyan">
+            <i class="fa-solid fa-images text-lg mb-0.5"></i>
+            <span class="text-[10px] font-semibold">Posts</span>
+        </button>
+        <button id="bottomNavMessenger" data-page="messenger" class="flex flex-col items-center justify-center text-gray-400 w-1/4 py-1 cursor-pointer transition hover:text-emerald-400 relative">
             <i class="fa-solid fa-message text-lg mb-0.5"></i>
             <span class="text-[10px] font-semibold">Messenger</span>
-            <span id="bottomMsgBadge" class="absolute top-1 right-8 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
+            <span id="bottomMsgBadge" class="absolute top-1 right-6 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
         </button>
     </nav>
 
@@ -775,13 +790,13 @@
                                 <span id="modalCreatorName" class="font-bold text-white text-xs">Creator</span>
                                 <span id="modalVerifiedBadge" class="text-emerald-400 text-[10px] hidden" title="Verified Monetized Channel"><i class="fa-solid fa-circle-check"></i></span>
                             </div>
-                            <span id="modalCreatorSubs" class="text-[9px] text-gray-400">0 subscribers</span>
+                            <span id="modalCreatorSubs" class="text-[9px] text-gray-400">0 followers</span>
                         </div>
                     </div>
                     
                     <div class="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
                         <button id="modalLikeBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full font-semibold flex items-center space-x-1.5 cursor-pointer text-xs"><i class="fa-regular fa-thumbs-up"></i> <span id="modalLikeCount">0</span></button>
-                        <button id="modalSubscribeBtn" class="bg-white text-dark-900 px-4 py-2 rounded-full font-bold hover:bg-gray-200 transition text-xs cursor-pointer shadow">Subscribe</button>
+                        <button id="modalSubscribeBtn" class="bg-white text-dark-900 px-4 py-2 rounded-full font-bold hover:bg-gray-200 transition text-xs cursor-pointer shadow">Follow</button>
                         <button id="modalSaveBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs font-semibold" title="Save Video"><i class="fa-solid fa-bookmark text-brand-cyan"></i> <span class="hidden sm:inline">Save</span></button>
                         <button id="modalShareBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs" title="Share Video Link"><i class="fa-solid fa-share"></i> <span class="hidden sm:inline">Share</span></button>
                         <button id="modalDownloadBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs" title="Download for Offline"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Download</span></button>
@@ -889,6 +904,22 @@
             } catch(e) {}
         })();
     </script>
+
+    <!-- PWA Service Worker Registration Script -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((reg) => {
+                        console.log('Zynqra PWA Service Worker Registered Successfully', reg.scope);
+                    })
+                    .catch((err) => {
+                        console.log('Service Worker Registration Failed:', err);
+                    });
+            });
+        }
+    </script>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>
