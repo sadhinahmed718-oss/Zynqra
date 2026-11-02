@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Zynqra - World's 1st Secure Global Video & Post Platform</title>
+    
+    <!-- PWA Manifest & App Icons -->
     <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <meta name="theme-color" content="#0f0f0f">
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -179,7 +185,12 @@
         </div>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
-            <!-- Notification Bell Added to Top Header -->
+            <!-- Header PWA Install Button -->
+            <button id="pwaInstallHeaderBtn" class="bg-gradient-to-r from-brand-cyan to-brand-red text-dark-900 font-extrabold px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs shadow-lg cursor-pointer hover:opacity-90 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-download"></i> <span>Install App</span>
+            </button>
+
+            <!-- Notification Bell -->
             <button id="headerNotificationBtn" class="relative p-2.5 hover:bg-dark-700/60 rounded-full text-amber-400 transition cursor-pointer" title="Notifications">
                 <i class="fa-solid fa-bell text-base"></i>
                 <span id="headerNotificationBadge" class="absolute top-1 right-1 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
@@ -228,6 +239,10 @@
             <a href="#" data-page="profile" class="nav-link flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-300 transition smooth-transition"><i class="fa-solid fa-circle-user w-4 text-purple-400"></i> <span>You / Profile</span></a>
             <a href="#" data-page="monetization" class="nav-link flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-300 transition smooth-transition"><i class="fa-solid fa-sack-dollar w-4 text-yellow-400"></i> <span>Monetization Hub</span></a>
             <div class="border-t border-dark-700/80 my-2 pt-2 space-y-1">
+                <!-- Sidebar Install Button -->
+                <button id="sidebarInstallBtn" class="w-full text-left flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-brand-cyan/20 text-brand-cyan font-bold transition cursor-pointer">
+                    <i class="fa-solid fa-download w-4"></i> <span>Install Zynqra App</span>
+                </button>
                 <a href="https://sadhinahmed718-oss.github.io/Zynqra-privacy-policy/" target="_blank" class="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-400 text-[11px]"><i class="fa-solid fa-shield-halved w-4"></i> <span>Privacy & Terms</span></a>
                 <button id="logoutSidebarBtn" class="w-full text-left flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-red-950/40 text-red-400 font-semibold transition cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4"></i> <span>Logout / Sign Out</span></button>
             </div>
@@ -856,7 +871,7 @@
         <div id="shortsCommentsList" class="flex-1 overflow-y-auto space-y-2.5 pr-1"></div>
     </div>
 
-    <!-- Advanced Military-Grade XSS Defense & Input Sanitizer Engine -->
+    <!-- Advanced Military-Grade XSS Defense, Input Sanitizer & PWA Install Prompt Engine -->
     <script>
         window.addEventListener('load', () => {
             setTimeout(() => {
@@ -903,6 +918,33 @@
                 });
             } catch(e) {}
         })();
+
+        // International Standard PWA Install Trigger & Prompt Handler
+        let deferredPrompt;
+        const pwaHeaderBtn = document.getElementById('pwaInstallHeaderBtn');
+        const sidebarInstallBtn = document.getElementById('sidebarInstallBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (pwaHeaderBtn) pwaHeaderBtn.classList.remove('hidden');
+        });
+
+        const triggerPWAInstall = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the Zynqra install prompt');
+                }
+                deferredPrompt = null;
+            } else {
+                alert('আপনার ব্রাউজার থেকে অ্যাপটি সরাসরি ইনস্টল করতে ব্রাউজারের মেনু (⋮) এ ক্লিক করে "Install app" বা "Add to Home screen" সিলেক্ট করুন!');
+            }
+        };
+
+        if (pwaHeaderBtn) pwaHeaderBtn.addEventListener('click', triggerPWAInstall);
+        if (sidebarInstallBtn) sidebarInstallBtn.addEventListener('click', triggerPWAInstall);
     </script>
 
     <!-- PWA Service Worker Registration Script -->
