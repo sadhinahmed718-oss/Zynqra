@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupShortsModalClose();
     loadDynamicAds();
     setupMessengerUIEnhancements();
+    setupPWAInstallHandlers();
     registerPWAStorageAndSecurityWorker();
 });
 
@@ -119,6 +120,56 @@ function registerPWAStorageAndSecurityWorker() {
                 });
         });
     }
+}
+
+// --- PWA Direct Install Handler ---
+function setupPWAInstallHandlers() {
+    let deferredPrompt;
+    const pwaHeaderBtn = document.getElementById('pwaInstallHeaderBtn');
+    const sidebarInstallBtn = document.getElementById('sidebarInstallBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (pwaHeaderBtn) {
+            pwaHeaderBtn.classList.remove('hidden');
+            pwaHeaderBtn.classList.add('flex');
+        }
+    });
+
+    const triggerPWAInstall = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted the Zynqra install prompt');
+            }
+            deferredPrompt = null;
+        } else {
+            showInstallGuideModal();
+        }
+    };
+
+    function showInstallGuideModal() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            alert('আইফোন (iOS) এ Zynqra ইনস্টল করতে সাফারি ব্রাউজারের Share (📤) বাটনে ক্লিক করে "Add to Home Screen" সিলেক্ট করুন।');
+        } else {
+            alert('সরাসরি ইনস্টল করতে আপনার ব্রাউজারের ওপরের ডানপাশের মেনু (⋮) থেকে "Install app" বা "Add to Home screen" এ ক্লিক করুন!');
+        }
+    }
+
+    if (pwaHeaderBtn) {
+        pwaHeaderBtn.addEventListener('click', triggerPWAInstall);
+    }
+    if (sidebarInstallBtn) {
+        sidebarInstallBtn.addEventListener('click', triggerPWAInstall);
+    }
+
+    window.addEventListener('appinstalled', (evt) => {
+        console.log('Zynqra was successfully installed');
+        if (pwaHeaderBtn) pwaHeaderBtn.style.display = 'none';
+    });
 }
 
 // --- Dynamic AdSense & Admin Banner Integration ---
@@ -280,12 +331,6 @@ function setupNavigation() {
         });
     }
 
-    const headerShortsBtn = document.getElementById('headerShortsBtn');
-    if (headerShortsBtn) headerShortsBtn.onclick = () => switchPage('shorts');
-
-    const headerPostsBtn = document.getElementById('headerPostsBtn');
-    if (headerPostsBtn) headerPostsBtn.onclick = () => switchPage('posts');
-
     const viewAllShortsBtn = document.getElementById('viewAllShortsBtn');
     if (viewAllShortsBtn) viewAllShortsBtn.onclick = () => switchPage('shorts');
 
@@ -388,7 +433,6 @@ function setupPostCreationUI() {
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // Send notifications to all followers
                 await notifyFollowers(currentUser.email, {
                     type: 'post',
                     title: `${currentUser.name} published a new post`,
@@ -529,7 +573,7 @@ window.commentOnPost = function(postId) {
     });
 };
 
-// --- Rule-based & Collaborative Filtering Algorithm for Home Feed ---
+// --- Home Feed Engine ---
 async function loadHomeFeed(category = 'all') {
     db.collection("videos").orderBy("date", "desc").onSnapshot(async (snapshot) => {
         const grid = document.getElementById('videoGrid');
@@ -775,6 +819,7 @@ async function checkIsFollowing(followerEmail, followingEmail) {
     }
 }
 
+// --- Anti-Cheat Follow System ---
 window.toggleFollowUser = async function(creatorEmail, btnElement) {
     if (!currentUser) {
         showToast('Please login with Google to follow creators!', 'error');
@@ -784,6 +829,14 @@ window.toggleFollowUser = async function(creatorEmail, btnElement) {
         showToast('You cannot follow yourself!', 'error');
         return;
     }
+
+    const followKeyLock = `lock_follow_${currentUser.email}_${creatorEmail}`;
+    if (sessionStorage.getItem(followKeyLock)) {
+        showToast('Please wait before changing follow status.', 'error');
+        return;
+    }
+    sessionStorage.setItem(followKeyLock, 'true');
+    setTimeout(() => sessionStorage.removeItem(followKeyLock), 2000);
 
     const followRef = db.collection("follows");
     const q = followRef.where("followerEmail", "==", currentUser.email).where("followingEmail", "==", creatorEmail);
@@ -1263,6 +1316,7 @@ async function openExternalProfile(email) {
     });
 }
 
+// --- YouTube-Style Watch Modal with Toggleable Comments & Anti-Cheat Views ---
 async function openVideoModal(video) {
     activeVideo = video;
     const modal = document.getElementById('videoModal');
@@ -1327,6 +1381,8 @@ async function openVideoModal(video) {
     player.src = video.videoUrl;
     renderComments(video);
     renderRelatedVideos(video);
+    setupCommentToggle();
+    
     modal.classList.remove('hidden');
     player.play();
     processSecureVideoView(video);
@@ -1353,6 +1409,25 @@ async function openVideoModal(video) {
     };
 }
 
+// --- YouTube-Style Comment Toggle Header ---
+function setupCommentToggle() {
+    const toggleHeader = document.getElementById('toggleCommentsHeader');
+    const commentsBody = document.getElementById('commentsSectionBody');
+    const toggleIcon = document.getElementById('commentToggleIcon');
+
+    if (toggleHeader && commentsBody && toggleIcon) {
+        toggleHeader.onclick = () => {
+            commentsBody.classList.toggle('hidden');
+            if (commentsBody.classList.contains('hidden')) {
+                toggleIcon.style.transform = 'rotate(-90deg)';
+            } else {
+                toggleIcon.style.transform = 'rotate(0deg)';
+            }
+        };
+    }
+}
+
+// --- Anti-Cheat Secure Video View Counter ---
 function processSecureVideoView(video) {
     const viewSessionKey = `viewed_session_${video.id}`;
     const lastViewTime = localStorage.getItem(`last_view_${video.id}`);
