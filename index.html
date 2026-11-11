@@ -4,13 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Zynqra - World's 1st Secure Global Video & Post Platform</title>
-    
-    <!-- PWA Manifest & App Icons -->
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
     <meta name="theme-color" content="#0f0f0f">
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -43,7 +37,14 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* YouTube/Facebook Reels Style Full Screen Shorts Layout */
+        /* YouTube Style Auto-Hiding Navbar & Header */
+        header, nav.fixed.bottom-0 {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .header-hidden { transform: translateY(-100%); display: none !important; }
+        .nav-hidden { transform: translateY(100%); }
+
+        /* Full Screen Facebook Reels Style Shorts Layout */
         .shorts-container { 
             scroll-snap-type: y mandatory; 
             scroll-behavior: smooth; 
@@ -62,21 +63,20 @@
             margin: 0;
             padding: 0;
             z-index: 35;
+            overflow-y: scroll;
         }
         .shorts-slide { 
             scroll-snap-align: start; 
             scroll-snap-stop: always; 
-            height: 100%; 
-            width: 100%; 
-            max-width: 100%; 
-            min-height: 80vh;
+            height: 100vh; 
+            width: 100vw; 
+            flex-shrink: 0;
             background: #000;
             position: relative;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 0px;
             margin: 0;
             padding: 0;
         }
@@ -136,8 +136,8 @@
         <span class="font-black text-base sm:text-lg tracking-widest bg-gradient-to-r from-brand-cyan to-brand-red bg-clip-text text-transparent animate-pulse">ZYNQRA</span>
     </div>
 
-    <!-- Top Header Navbar -->
-    <header class="fixed top-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-b border-dark-700/80 z-40 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)]">
+    <!-- Top Header Navbar (Auto-Hiding) -->
+    <header id="topHeaderNavbar" class="fixed top-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-b border-dark-700/80 z-40 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top)]">
         <div class="flex items-center space-x-2 sm:space-x-3">
             <button id="hamburgerBtn" class="p-2 hover:bg-dark-700/60 rounded-full text-gray-300 transition smooth-transition cursor-pointer"><i class="fa-solid fa-bars text-base"></i></button>
             <a href="#" id="logoHome" class="flex items-center space-x-2 group">
@@ -185,12 +185,6 @@
         </div>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
-            <!-- Header PWA Install Button -->
-            <button id="pwaInstallHeaderBtn" class="bg-gradient-to-r from-brand-cyan to-brand-red text-dark-900 font-extrabold px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs shadow-lg cursor-pointer hover:opacity-90 transition flex items-center space-x-1.5">
-                <i class="fa-solid fa-download"></i> <span>Install App</span>
-            </button>
-
-            <!-- Notification Bell -->
             <button id="headerNotificationBtn" class="relative p-2.5 hover:bg-dark-700/60 rounded-full text-amber-400 transition cursor-pointer" title="Notifications">
                 <i class="fa-solid fa-bell text-base"></i>
                 <span id="headerNotificationBadge" class="absolute top-1 right-1 bg-red-500 text-white text-[8px] px-1.5 py-0.2 rounded-full hidden">0</span>
@@ -207,7 +201,7 @@
                     <span class="text-xs font-medium">Sign in</span>
                 </button>
             </div>
-            <div id="userProfileHeader" class="hidden flex items-center space-x-2 cursor-pointer relative">
+            <div id="userProfileHeader" class="hidden flex items-center space-x-2 cursor-pointer relative" onclick="switchPage('profile')">
                 <img id="userHeaderAvatar" src="" alt="Profile" class="w-8 h-8 rounded-full object-cover border border-brand-cyan shadow-sm shrink-0">
             </div>
         </div>
@@ -239,10 +233,6 @@
             <a href="#" data-page="profile" class="nav-link flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-300 transition smooth-transition"><i class="fa-solid fa-circle-user w-4 text-purple-400"></i> <span>You / Profile</span></a>
             <a href="#" data-page="monetization" class="nav-link flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-300 transition smooth-transition"><i class="fa-solid fa-sack-dollar w-4 text-yellow-400"></i> <span>Monetization Hub</span></a>
             <div class="border-t border-dark-700/80 my-2 pt-2 space-y-1">
-                <!-- Sidebar Install Button -->
-                <button id="sidebarInstallBtn" class="w-full text-left flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-brand-cyan/20 text-brand-cyan font-bold transition cursor-pointer">
-                    <i class="fa-solid fa-download w-4"></i> <span>Install Zynqra App</span>
-                </button>
                 <a href="https://sadhinahmed718-oss.github.io/Zynqra-privacy-policy/" target="_blank" class="flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-dark-700/60 text-gray-400 text-[11px]"><i class="fa-solid fa-shield-halved w-4"></i> <span>Privacy & Terms</span></a>
                 <button id="logoutSidebarBtn" class="w-full text-left flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-red-950/40 text-red-400 font-semibold transition cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4"></i> <span>Logout / Sign Out</span></button>
             </div>
@@ -255,7 +245,6 @@
         
             <!-- HOME PAGE -->
             <section id="page-home" class="page-view space-y-5">
-                <!-- Category Chips with Filter Feed Algorithm -->
                 <div class="flex items-center space-x-2.5 overflow-x-auto hide-scrollbar pb-1 font-medium pt-1">
                     <button data-category="all" class="category-chip bg-white text-dark-900 px-4 py-2 rounded-xl font-bold shrink-0 shadow-lg cursor-pointer">All Feed</button>
                     <button data-category="following" class="category-chip bg-dark-800 hover:bg-dark-700 text-pink-400 px-4 py-2 rounded-xl shrink-0 transition cursor-pointer font-bold"><i class="fa-solid fa-user-check mr-1"></i> Following Feed</button>
@@ -278,7 +267,8 @@
                     <div id="homeShortsCarousel" class="flex space-x-3 overflow-x-auto hide-scrollbar pb-1"></div>
                 </div>
 
-                <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12"></div>
+                <!-- Professional YouTube Style Video Feed List Layout -->
+                <div id="videoGrid" class="space-y-6 pb-12 max-w-4xl mx-auto"></div>
             </section>
 
             <!-- SHORTS DEDICATED FULL SCREEN PLAYER -->
@@ -288,9 +278,8 @@
                 </div>
             </section>
 
-            <!-- POSTS & PHOTOS PAGE (Facebook Style Photo/Status Posts) -->
+            <!-- POSTS & PHOTOS PAGE -->
             <section id="page-posts" class="page-view hidden max-w-xl mx-auto space-y-4 pb-12">
-                <!-- Create Post Box -->
                 <div class="bg-[#242526] border border-dark-700 rounded-3xl p-4 shadow-2xl space-y-3">
                     <div class="flex items-center space-x-3 border-b border-dark-700 pb-3">
                         <img id="postCreatorAvatar" src="" class="w-10 h-10 rounded-full object-cover border border-brand-cyan" alt="Avatar">
@@ -310,10 +299,7 @@
                     </div>
                 </div>
 
-                <!-- Posts Feed Container -->
-                <div id="postsFeedContainer" class="space-y-4">
-                    <!-- Dynamic posts injected here -->
-                </div>
+                <div id="postsFeedContainer" class="space-y-4"></div>
             </section>
 
             <!-- YOUR DOWNLOADS & SAVED -->
@@ -395,17 +381,30 @@
                 </div>
             </section>
 
-            <!-- FACEBOOK-STYLE ULTRA-SECURE & FIXED MESSENGER PAGE -->
-            <section id="page-messenger" class="page-view hidden fixed inset-0 top-16 bottom-16 md:static md:h-[calc(100vh-80px)] max-h-[860px] w-full max-w-5xl mx-auto bg-[#18191a] border border-dark-700 md:rounded-3xl overflow-hidden flex flex-col shadow-2xl z-30">
+            <!-- MESSENGER PAGE (Full Screen Professional Layout without Top Gaps) -->
+            <section id="page-messenger" class="page-view hidden fixed inset-0 top-0 bottom-16 md:static md:h-[calc(100vh-80px)] max-h-[860px] w-full max-w-5xl mx-auto bg-[#18191a] border-0 md:border md:border-dark-700 md:rounded-3xl overflow-hidden flex flex-col shadow-2xl z-40 m-0 p-0">
                 
-                <!-- Messenger Header Bar -->
-                <div class="bg-[#242526] px-4 py-3 border-b border-dark-700 flex items-center justify-between shrink-0 shadow">
+                <!-- Messenger Header Bar with Clean Single Search Toggle & Settings -->
+                <div class="bg-[#242526] px-4 py-3 pt-[calc(env(safe-area-inset-top)+12px)] md:pt-3 border-b border-dark-700 flex items-center justify-between shrink-0 shadow relative">
                     <div class="flex items-center space-x-3">
-                        <h2 class="text-base font-black text-white tracking-wide">Chats</h2>
+                        <h2 id="messengerHeaderTitle" class="text-base font-black text-white tracking-wide">Chats</h2>
                     </div>
+                    
+                    <!-- Expandable Header Search Input Bar with '×' Close Button -->
+                    <div id="messengerHeaderSearchWrapper" class="absolute inset-x-12 px-3 hidden items-center bg-[#3a3b3c] rounded-full py-1.5 shadow-inner">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs mr-2"></i>
+                        <input type="text" id="messengerHeaderSearchInput" placeholder="Search chats or friends..." class="w-full bg-transparent outline-none text-xs text-white placeholder-gray-400">
+                        <button id="clearMessengerSearchBtn" class="text-gray-400 hover:text-white px-1.5 text-xs mr-1 hidden" title="Clear Text"><i class="fa-solid fa-xmark"></i></button>
+                        <button id="closeMessengerHeaderSearch" class="text-gray-400 hover:text-white px-2 bg-dark-700/50 rounded-full h-6 w-6 flex items-center justify-center" title="Close Search"><i class="fa-solid fa-xmark text-sm"></i></button>
+                    </div>
+
                     <div class="flex items-center space-x-2">
-                        <button id="messengerNewChatBtn" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-white transition shadow cursor-pointer" title="New Message">
-                            <i class="fa-solid fa-pen-to-square text-sm"></i>
+                        <button id="messengerHeaderSearchBtn" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-white transition shadow cursor-pointer" title="Search Chats">
+                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                        </button>
+                        <button id="messengerSettingsBtn" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-white transition shadow cursor-pointer relative" title="Messaging Settings">
+                            <i class="fa-solid fa-gear text-sm"></i>
+                            <span id="settingsRequestBadge" class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span>
                         </button>
                     </div>
                 </div>
@@ -415,20 +414,12 @@
                     
                     <!-- Left Pane: Messenger Inbox & Active Stories/Friends Tray -->
                     <div id="messengerSidebarPane" class="w-full md:w-80 bg-[#18191a] border-r border-dark-700 flex flex-col h-full shrink-0">
-                        <!-- Search Bar -->
-                        <div class="p-3">
-                            <div class="flex items-center bg-[#3a3b3c] rounded-full px-3.5 py-2">
-                                <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs mr-2"></i>
-                                <input type="text" id="messengerSearchInput" placeholder="Search Messenger..." class="w-full bg-transparent outline-none text-xs text-white placeholder-gray-400">
-                            </div>
-                        </div>
-
-                        <!-- Facebook Style Stories / Active Friends Horizontal Tray -->
-                        <div class="px-3 pb-2 border-b border-dark-700/60 shrink-0">
+                        <!-- Stories / Active Friends Horizontal Tray -->
+                        <div class="px-3 py-2.5 border-b border-dark-700/60 shrink-0">
                             <div id="chatContactsHorizontalList" class="flex items-center space-x-3 overflow-x-auto hide-scrollbar py-1"></div>
                         </div>
 
-                        <!-- Chat Conversation List (Inbox) - Auto Sorted by Latest Message -->
+                        <!-- Chat Conversation List -->
                         <div id="messengerInboxList" class="flex-1 overflow-y-auto divide-y divide-dark-700/30 pb-20 md:pb-0"></div>
                     </div>
 
@@ -438,19 +429,18 @@
                         <!-- Active Chat Header -->
                         <div id="activeChatHeader" class="bg-[#242526] px-4 py-2.5 border-b border-dark-700 flex items-center justify-between shrink-0 shadow-sm">
                             <div class="flex items-center space-x-3">
-                                <button id="backToInboxBtn" class="md:hidden text-gray-300 hover:text-white p-1 mr-1"><i class="fa-solid fa-arrow-left text-base"></i></button>
-                                <div class="relative cursor-pointer" onclick="openExternalProfile(activeChatContact?.email)">
-                                    <img id="activeChatAvatar" src="https://via.placeholder.com/40" class="w-9 h-9 rounded-full object-cover hidden" alt="Avatar">
+                                <button id="backToInboxBtn" class="md:hidden text-gray-300 hover:text-white p-1 mr-1" onclick="document.getElementById('messengerChatPane').classList.add('translate-x-full')"><i class="fa-solid fa-arrow-left text-base"></i></button>
+                                <div class="relative cursor-pointer" id="activeChatProfileClick">
+                                    <img id="activeChatAvatar" src="" class="w-9 h-9 rounded-full object-cover hidden" alt="Avatar">
                                     <div id="activeChatAvatarPlaceholder" class="w-9 h-9 rounded-full bg-[#3a3b3c] flex items-center justify-center text-gray-300 font-bold text-xs"><i class="fa-solid fa-user"></i></div>
                                     <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#242526] rounded-full"></span>
                                 </div>
                                 <div>
-                                    <span id="activeChatName" class="font-bold text-white text-xs block cursor-pointer hover:underline" onclick="openExternalProfile(activeChatContact?.email)">Select a friend to start messaging</span>
-                                    <span id="activeChatStatus" class="text-[9px] text-emerald-400">Active Now</span>
+                                    <span id="activeChatName" class="font-bold text-white text-xs block cursor-pointer hover:underline">Select a friend to start messaging</span>
+                                    <span id="activeChatStatus" class="text-[9px] text-emerald-400">Securely Encrypted</span>
                                 </div>
                             </div>
 
-                            <!-- Options Menu -->
                             <div class="flex items-center space-x-3 text-brand-cyan">
                                 <div class="relative">
                                     <button id="chatOptionsBtn" class="w-8 h-8 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-gray-200 transition cursor-pointer hidden"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
@@ -471,6 +461,15 @@
                             </div>
                         </div>
 
+                        <!-- Message Request Approval Banner -->
+                        <div id="messageRequestBanner" class="hidden bg-[#242526] border-t border-dark-700 p-4 text-center space-y-2 shrink-0">
+                            <p class="text-xs text-gray-300">This user sent you a message request. Accept to add them to your friends chat list permanently.</p>
+                            <div class="flex justify-center space-x-3">
+                                <button id="acceptRequestBtn" class="bg-brand-cyan text-dark-900 font-bold px-5 py-2 rounded-xl text-xs hover:bg-cyan-400 transition cursor-pointer">Accept & Add Friend</button>
+                                <button id="deleteRequestBtn" class="bg-red-500/20 text-red-400 font-bold px-5 py-2 rounded-xl text-xs hover:bg-red-500/30 transition cursor-pointer">Delete / Ignore</button>
+                            </div>
+                        </div>
+
                         <!-- Emoji Quick Toolbar -->
                         <div id="emojiToolbar" class="bg-[#242526] px-3 py-1.5 border-t border-dark-700/60 flex space-x-3 overflow-x-auto hide-scrollbar text-base shrink-0 select-none items-center">
                             <span class="cursor-pointer hover:scale-125 transition transform">😊</span>
@@ -485,7 +484,7 @@
                         </div>
 
                         <!-- Messenger Input Bar -->
-                        <div class="p-3 bg-[#242526] border-t border-dark-700 flex items-center space-x-2 shrink-0 z-30 mb-14 md:mb-0">
+                        <div id="messengerInputBarWrapper" class="p-3 bg-[#242526] border-t border-dark-700 flex items-center space-x-2 shrink-0 z-30 mb-14 md:mb-0">
                             <label for="chatImageInput" class="w-9 h-9 bg-[#3a3b3c] hover:bg-[#4e4f50] rounded-full flex items-center justify-center text-brand-cyan cursor-pointer transition shrink-0 shadow" title="Attach Image">
                                 <i class="fa-solid fa-image text-sm"></i>
                             </label>
@@ -501,9 +500,8 @@
                 </div>
             </section>
 
-            <!-- PROFESSIONAL CREATOR DASHBOARD (YouTube & Facebook Style Studio) -->
+            <!-- PROFESSIONAL CREATOR DASHBOARD -->
             <section id="page-analytics" class="page-view hidden max-w-5xl mx-auto space-y-6 pb-12">
-                <!-- Studio Header Banner -->
                 <div class="bg-gradient-to-r from-dark-800 via-[#1e1e1e] to-dark-800 border border-dark-700 rounded-3xl p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                     <div class="flex items-center space-x-4">
                         <div class="w-14 h-14 bg-brand-cyan/10 border border-brand-cyan/40 rounded-2xl flex items-center justify-center text-brand-cyan text-2xl shadow-inner">
@@ -521,7 +519,6 @@
                     </div>
                 </div>
 
-                <!-- Key Metrics Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-dark-800 border border-dark-700 rounded-3xl p-5 shadow-xl space-y-2 relative overflow-hidden group">
                         <div class="flex items-center justify-between text-gray-400">
@@ -560,7 +557,6 @@
                     </div>
                 </div>
 
-                <!-- Video Performance Table & Breakdown -->
                 <div class="bg-dark-800 border border-dark-700 rounded-3xl p-6 shadow-2xl space-y-4">
                     <div class="flex items-center justify-between border-b border-dark-700 pb-3">
                         <h3 class="font-bold text-white text-sm flex items-center"><i class="fa-solid fa-video text-brand-cyan mr-2"></i> Your Published Content Performance</h3>
@@ -572,39 +568,49 @@
 
             <!-- PROFILE -->
             <section id="page-profile" class="page-view hidden max-w-3xl mx-auto space-y-4">
-                <div class="bg-dark-800 border border-dark-700 rounded-3xl p-6 shadow-2xl space-y-4">
-                    <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-5">
-                        <div class="relative">
-                            <img id="profileAvatar" src="" alt="Avatar" class="w-20 h-20 rounded-full object-cover border-2 border-brand-cyan shadow-md">
-                            <span id="profileVerifiedBadge" class="absolute bottom-0 right-0 w-5 h-5 bg-emerald-500 border-2 border-dark-800 rounded-full flex items-center justify-center text-[10px] text-white hidden" title="Verified Monetized Channel"><i class="fa-solid fa-check"></i></span>
-                        </div>
-                        <div class="flex-1 text-center sm:text-left space-y-1">
-                            <div class="flex items-center justify-center sm:justify-start space-x-2">
-                                <h2 id="profileName" class="text-sm font-bold text-white">User Name</h2>
-                                <span id="profileNameVerifiedIcon" class="text-emerald-400 text-xs hidden" title="Verified Creator"><i class="fa-solid fa-circle-check"></i></span>
+                <div class="bg-gradient-to-b from-dark-800 to-dark-900 border border-dark-700 rounded-3xl overflow-hidden shadow-2xl">
+                    <div class="h-32 bg-gradient-to-r from-brand-cyan/20 via-purple-600/20 to-brand-red/20 relative"></div>
+                    <div class="px-6 pb-6 relative -mt-12 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4">
+                        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
+                            <div class="relative">
+                                <img id="profileAvatar" src="" alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-dark-900 shadow-xl bg-dark-800">
+                                <span id="profileVerifiedBadge" class="absolute bottom-1 right-1 w-6 h-6 bg-emerald-500 border-2 border-dark-900 rounded-full flex items-center justify-center text-[10px] text-white hidden" title="Verified Monetized Channel"><i class="fa-solid fa-check"></i></span>
                             </div>
-                            <p id="profileEmail" class="text-[11px] text-gray-400">user@email.com</p>
-                            <p id="profileBio" class="text-[11px] text-gray-300 italic">Add your bio...</p>
-                            <div class="flex items-center justify-center sm:justify-start space-x-4 pt-1 text-[10px] text-gray-400">
-                                <span id="profileSubCount">0 Followers</span>
-                                <span id="profileVideoCountBadge" class="text-brand-cyan font-bold">0 Videos</span>
-                                <span id="profilePostCountBadge" class="text-pink-400 font-bold">0 Posts</span>
-                                <span id="profileStrikeCount" class="text-red-400">0 Strikes</span>
+                            <div class="pt-2">
+                                <div class="flex items-center justify-center sm:justify-start space-x-2">
+                                    <h2 id="profileName" class="text-base font-black text-white">User Name</h2>
+                                    <span id="profileNameVerifiedIcon" class="text-emerald-400 text-xs hidden" title="Verified Creator"><i class="fa-solid fa-circle-check"></i></span>
+                                </div>
+                                <p id="profileEmail" class="text-[11px] text-gray-400">user@email.com</p>
+                                <p id="profileBio" class="text-[11px] text-gray-300 italic mt-1 max-w-sm">Add your bio...</p>
                             </div>
                         </div>
-                        <div class="flex flex-col space-y-2">
-                            <button id="openEditModalBtn" class="bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan font-bold px-4 py-2 rounded-2xl hover:bg-brand-cyan/20 transition cursor-pointer text-xs flex items-center space-x-1.5 shadow">
-                                <i class="fa-solid fa-pen-to-square"></i> <span>Edit Profile</span>
-                            </button>
+                        <button id="openEditModalBtn" class="bg-brand-cyan text-dark-900 font-extrabold px-5 py-2.5 rounded-2xl hover:bg-cyan-400 transition cursor-pointer text-xs flex items-center space-x-2 shadow-lg">
+                            <i class="fa-solid fa-pen-to-square"></i> <span>Edit Profile</span>
+                        </button>
+                    </div>
+                    <div class="px-6 py-3 bg-dark-800/80 border-t border-dark-700 flex items-center justify-around text-center">
+                        <div>
+                            <div id="profileSubCount" class="text-sm font-black text-white">0</div>
+                            <div class="text-[10px] text-gray-400">Followers</div>
+                        </div>
+                        <div class="border-r border-dark-700 h-6"></div>
+                        <div>
+                            <div id="profileVideoCountBadge" class="text-sm font-black text-brand-cyan">0</div>
+                            <div class="text-[10px] text-gray-400">Videos</div>
+                        </div>
+                        <div class="border-r border-dark-700 h-6"></div>
+                        <div>
+                            <div id="profilePostCountBadge" class="text-sm font-black text-pink-400">0</div>
+                            <div class="text-[10px] text-gray-400">Posts</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Profile Tabs (Videos, Shorts, Posts) -->
                 <div class="bg-dark-800 border border-dark-700 rounded-3xl p-5 space-y-4">
                     <div class="flex space-x-4 border-b border-dark-700 pb-3 overflow-x-auto hide-scrollbar">
-                        <button id="profileTabVideos" class="text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0">Videos (16:9)</button>
-                        <button id="profileTabShorts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Shorts (9:16)</button>
+                        <button id="profileTabVideos" class="text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0">Videos (Standard)</button>
+                        <button id="profileTabShorts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Shorts</button>
                         <button id="profileTabPosts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Posts & Photos</button>
                     </div>
                     <div id="profileTabContentArea" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
@@ -613,33 +619,31 @@
 
             <!-- EXTERNAL PROFILE -->
             <section id="page-external-profile" class="page-view hidden max-w-3xl mx-auto space-y-4">
-                <div class="bg-dark-800 border border-dark-700 rounded-3xl p-6 shadow-2xl space-y-4">
-                    <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-5">
-                        <img id="extProfileAvatar" src="" alt="Avatar" class="w-20 h-20 rounded-full object-cover border-2 border-brand-cyan shadow-md">
-                        <div class="flex-1 text-center sm:text-left space-y-1">
-                            <div class="flex items-center justify-center sm:justify-start space-x-2">
-                                <h2 id="extProfileName" class="text-sm font-bold text-white">Creator Name</h2>
-                                <span id="extProfileNameVerifiedIcon" class="text-emerald-400 text-xs hidden"><i class="fa-solid fa-circle-check"></i></span>
-                            </div>
-                            <p id="extProfileEmail" class="text-[11px] text-gray-400">email@zynqra.com</p>
-                            <p id="extProfileBio" class="text-[11px] text-gray-300 italic">Bio...</p>
-                            <div class="flex items-center justify-center sm:justify-start space-x-4 pt-1 text-[10px]">
-                                <span id="extProfileSubs" class="text-brand-cyan font-bold">0 Followers</span>
-                                <span id="extProfileVideoCount" class="text-gray-300 font-bold">0 Videos</span>
-                                <span id="extProfilePostCount" class="text-pink-400 font-bold">0 Posts</span>
+                <div class="bg-gradient-to-b from-dark-800 to-dark-900 border border-dark-700 rounded-3xl overflow-hidden shadow-2xl">
+                    <div class="h-32 bg-gradient-to-r from-brand-cyan/20 via-purple-600/20 to-brand-red/20 relative"></div>
+                    <div class="px-6 pb-6 relative -mt-12 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4">
+                        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
+                            <img id="extProfileAvatar" src="" alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-dark-900 shadow-xl bg-dark-800">
+                            <div class="pt-2">
+                                <div class="flex items-center justify-center sm:justify-start space-x-2">
+                                    <h2 id="extProfileName" class="text-base font-black text-white">Creator Name</h2>
+                                    <span id="extProfileNameVerifiedIcon" class="text-emerald-400 text-xs hidden"><i class="fa-solid fa-circle-check"></i></span>
+                                </div>
+                                <p id="extProfileEmail" class="text-[11px] text-gray-400">email@zynqra.com</p>
+                                <p id="extProfileBio" class="text-[11px] text-gray-300 italic mt-1 max-w-sm">Bio...</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button id="extSubscribeBtn" class="bg-white text-dark-900 font-bold px-4 py-2 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow">Follow</button>
-                            <button id="extMessageBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-2xl text-xs font-semibold shadow cursor-pointer"><i class="fa-solid fa-message mr-1"></i> Message</button>
+                            <button id="extSubscribeBtn" class="bg-white text-dark-900 font-bold px-5 py-2.5 rounded-2xl text-xs hover:bg-gray-200 transition cursor-pointer shadow">Follow</button>
+                            <button id="extMessageBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-xs font-semibold shadow cursor-pointer"><i class="fa-solid fa-message mr-1"></i> Message</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-dark-800 border border-dark-700 rounded-3xl p-5 space-y-4">
                     <div class="flex space-x-4 border-b border-dark-700 pb-3 overflow-x-auto hide-scrollbar">
-                        <button id="extTabVideos" class="text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0">Videos (16:9)</button>
-                        <button id="extTabShorts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Shorts (9:16)</button>
+                        <button id="extTabVideos" class="text-xs font-bold text-brand-cyan border-b-2 border-brand-cyan pb-1 transition cursor-pointer shrink-0">Videos (Standard)</button>
+                        <button id="extTabShorts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Shorts</button>
                         <button id="extTabPosts" class="text-xs font-semibold text-gray-400 hover:text-white pb-1 transition cursor-pointer shrink-0">Posts & Photos</button>
                     </div>
                     <div id="extTabContentArea" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
@@ -697,13 +701,12 @@
         </div>
     </main>
 
-    <!-- Professional Bottom Navigation Bar with Requested Button Positions -->
-    <nav class="fixed bottom-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-t border-dark-700/80 z-40 flex items-center justify-around px-2 shadow-2xl">
+    <!-- Bottom Navigation Bar (Auto-Hiding) -->
+    <nav id="bottomNavbar" class="fixed bottom-0 left-0 right-0 h-16 bg-dark-900/95 backdrop-blur-xl border-t border-dark-700/80 z-40 flex items-center justify-around px-2 shadow-2xl">
         <button id="bottomNavHome" data-page="home" class="flex flex-col items-center justify-center text-brand-cyan w-1/4 py-1 cursor-pointer transition hover:text-white">
             <i class="fa-solid fa-house text-lg mb-0.5"></i>
             <span class="text-[10px] font-bold">Home</span>
         </button>
-        <!-- Shorts Button placed between Home and Upload (+) Button -->
         <button id="bottomNavShorts" data-page="shorts" class="flex flex-col items-center justify-center text-gray-400 w-1/4 py-1 cursor-pointer transition hover:text-amber-400">
             <i class="fa-solid fa-bolt text-lg mb-0.5"></i>
             <span class="text-[10px] font-semibold">Shorts</span>
@@ -711,7 +714,6 @@
         <button id="bottomNavUpload" data-page="upload" class="flex flex-col items-center justify-center text-dark-900 bg-gradient-to-r from-brand-cyan to-brand-red w-11 h-11 rounded-full shadow-lg cursor-pointer transform -translate-y-2 hover:scale-105 transition shrink-0">
             <i class="fa-solid fa-plus text-base font-black"></i>
         </button>
-        <!-- Posts Button placed between Upload (+) Button and Messenger -->
         <button id="bottomNavPosts" data-page="posts" class="flex flex-col items-center justify-center text-gray-400 w-1/4 py-1 cursor-pointer transition hover:text-brand-cyan">
             <i class="fa-solid fa-images text-lg mb-0.5"></i>
             <span class="text-[10px] font-semibold">Posts</span>
@@ -753,9 +755,8 @@
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-[11px] text-gray-300 mb-1">Display Name (Can change once every 2 months)</label>
+                    <label class="block text-[11px] text-gray-300 mb-1">Display Name</label>
                     <input type="text" id="editNameInput" placeholder="New display name" class="w-full bg-dark-900 border border-dark-600 rounded-2xl p-3 text-white outline-none text-xs">
-                    <p id="nameChangeWarning" class="text-[9px] text-amber-400 mt-1 hidden"><i class="fa-solid fa-triangle-exclamation"></i> You can change your name again after 2 months.</p>
                 </div>
                 <div>
                     <label class="block text-[11px] text-gray-300 mb-1">Upload Profile Photo</label>
@@ -767,18 +768,6 @@
                 </div>
                 <button id="saveProfileBtn" class="w-full bg-brand-cyan text-dark-900 font-bold py-3 rounded-2xl hover:bg-cyan-400 transition cursor-pointer shadow-lg text-xs">Save Profile Updates</button>
             </div>
-        </div>
-    </div>
-
-    <!-- EDIT VIDEO TITLE MODAL -->
-    <div id="editVideoModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-dark-800 border border-dark-700 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
-            <div class="flex justify-between items-center border-b border-dark-700 pb-3">
-                <h3 class="font-bold text-white text-sm">Edit Video Title</h3>
-                <button id="closeEditVideoModal" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-base"></i></button>
-            </div>
-            <input type="text" id="editVideoTitleInput" placeholder="New video title..." class="w-full bg-dark-900 border border-dark-600 rounded-2xl p-3 text-white outline-none text-xs">
-            <button id="saveVideoTitleBtn" class="w-full bg-brand-cyan text-dark-900 font-bold py-2.5 rounded-2xl hover:bg-cyan-400 transition text-xs cursor-pointer">Update Title</button>
         </div>
     </div>
 
@@ -813,8 +802,14 @@
                         <button id="modalLikeBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full font-semibold flex items-center space-x-1.5 cursor-pointer text-xs"><i class="fa-regular fa-thumbs-up"></i> <span id="modalLikeCount">0</span></button>
                         <button id="modalSubscribeBtn" class="bg-white text-dark-900 px-4 py-2 rounded-full font-bold hover:bg-gray-200 transition text-xs cursor-pointer shadow">Follow</button>
                         <button id="modalSaveBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs font-semibold" title="Save Video"><i class="fa-solid fa-bookmark text-brand-cyan"></i> <span class="hidden sm:inline">Save</span></button>
-                        <button id="modalShareBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs" title="Share Video Link"><i class="fa-solid fa-share"></i> <span class="hidden sm:inline">Share</span></button>
                         <button id="modalDownloadBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3.5 py-2 rounded-full cursor-pointer text-xs" title="Download for Offline"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Download</span></button>
+                        
+                        <div class="relative">
+                            <button id="modalThreeDotBtn" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer text-xs"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                            <div id="modalThreeDotMenu" class="absolute right-0 top-11 bg-dark-800 border border-dark-600 rounded-2xl shadow-2xl hidden z-40 py-1.5 w-40">
+                                <button id="modalShareBtn" class="w-full text-left px-4 py-2 text-white hover:bg-dark-700 text-xs flex items-center space-x-2 cursor-pointer"><i class="fa-solid fa-share text-emerald-400"></i> <span>Share Link</span></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -849,9 +844,10 @@
             </div>
         </div>
 
-        <div class="w-full lg:w-80 bg-dark-900 border-l border-dark-700 p-4 flex flex-col space-y-3 lg:overflow-y-auto">
+        <!-- Related Videos Sidebar -->
+        <div class="w-full lg:w-80 bg-dark-900 border-l border-dark-700 p-4 flex flex-col space-y-3 lg:overflow-y-auto shrink-0">
             <div class="flex items-center justify-between pb-2 border-b border-dark-700">
-                <h4 class="font-bold text-white text-xs">Related Videos</h4>
+                <h4 class="font-bold text-white text-xs flex items-center"><i class="fa-solid fa-film text-brand-cyan mr-1.5"></i> Related Videos</h4>
                 <button id="closeVideoModalDesktop" class="hidden lg:block p-1.5 hover:bg-dark-700 rounded-full text-gray-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-base"></i></button>
             </div>
             <div id="relatedVideosSidebar" class="space-y-3"></div>
@@ -871,7 +867,7 @@
         <div id="shortsCommentsList" class="flex-1 overflow-y-auto space-y-2.5 pr-1"></div>
     </div>
 
-    <!-- Advanced Military-Grade XSS Defense, Input Sanitizer & PWA Install Prompt Engine -->
+    <!-- Security, XSS Defense & Smart Header Page-Switch Auto Control Script -->
     <script>
         window.addEventListener('load', () => {
             setTimeout(() => {
@@ -881,7 +877,93 @@
                     setTimeout(() => splash.remove(), 600);
                 }
             }, 3000);
+
+            // Messenger Header Search Toggle with '×' Close & Clear Functionality
+            const msgSearchBtn = document.getElementById('messengerHeaderSearchBtn');
+            const msgSearchWrapper = document.getElementById('messengerHeaderSearchWrapper');
+            const closeMsgSearch = document.getElementById('closeMessengerHeaderSearch');
+            const msgSearchInput = document.getElementById('messengerHeaderSearchInput');
+            const clearMsgSearchBtn = document.getElementById('clearMessengerSearchBtn');
+
+            if (msgSearchBtn && msgSearchWrapper) {
+                msgSearchBtn.addEventListener('click', () => {
+                    msgSearchWrapper.classList.remove('hidden');
+                    msgSearchWrapper.classList.add('flex');
+                    msgSearchInput.focus();
+                });
+            }
+            if (closeMsgSearch && msgSearchWrapper) {
+                closeMsgSearch.addEventListener('click', () => {
+                    msgSearchWrapper.classList.add('hidden');
+                    msgSearchWrapper.classList.remove('flex');
+                    msgSearchInput.value = '';
+                    if (clearMsgSearchBtn) clearMsgSearchBtn.classList.add('hidden');
+                });
+            }
+            if (msgSearchInput && clearMsgSearchBtn) {
+                msgSearchInput.addEventListener('input', (e) => {
+                    if (e.target.value.length > 0) {
+                        clearMsgSearchBtn.classList.remove('hidden');
+                    } else {
+                        clearMsgSearchBtn.classList.add('hidden');
+                    }
+                });
+                clearMsgSearchBtn.addEventListener('click', () => {
+                    msgSearchInput.value = '';
+                    clearMsgSearchBtn.classList.add('hidden');
+                    msgSearchInput.focus();
+                });
+            }
         });
+
+        // Smart Header & Bottom Bar Visibility Controller based on Active Page
+        window.handlePageHeaderVisibility = function(pageId) {
+            const topHeader = document.getElementById('topHeaderNavbar');
+            const bottomNav = document.getElementById('bottomNavbar');
+            
+            if (pageId === 'messenger' || pageId === 'shorts') {
+                // Hide top global header completely for Messenger and Shorts to avoid double headers and top gaps
+                if (topHeader) {
+                    topHeader.classList.add('header-hidden');
+                    topHeader.style.display = 'none';
+                }
+                // Ensure bottom navigation bar remains visible on Shorts and Messenger for quick access back to Home
+                if (bottomNav) {
+                    bottomNav.classList.remove('nav-hidden');
+                    bottomNav.style.display = 'flex';
+                }
+            } else {
+                if (topHeader) {
+                    topHeader.style.display = 'flex';
+                    topHeader.classList.remove('header-hidden');
+                }
+                if (bottomNav) {
+                    bottomNav.style.display = 'flex';
+                    bottomNav.classList.remove('nav-hidden');
+                }
+            }
+        };
+
+        // YouTube-style Scroll Hide/Show Logic for Header & Bottom Navbar (Home feed only)
+        let lastScrollTop = 0;
+        const topHeader = document.getElementById('topHeaderNavbar');
+        const bottomNav = document.getElementById('bottomNavbar');
+
+        window.addEventListener('scroll', () => {
+            const activePageEl = document.querySelector('.page-view:not(.hidden)');
+            const currentActivePageId = activePageEl ? activePageEl.id : '';
+            if (currentActivePageId === 'page-messenger' || currentActivePageId === 'page-shorts') return;
+
+            let st = window.pageYOffset || document.documentElement.scrollTop;
+            if (st > lastScrollTop && st > 50) {
+                if (topHeader) topHeader.classList.add('header-hidden');
+                if (bottomNav) bottomNav.classList.add('nav-hidden');
+            } else {
+                if (topHeader) topHeader.classList.remove('header-hidden');
+                if (bottomNav) bottomNav.classList.remove('nav-hidden');
+            }
+            lastScrollTop = st <= 0 ? 0 : st;
+        }, { passive: true });
 
         window.escapeHTML = function(str) {
             if (!str) return '';
@@ -907,8 +989,10 @@
             return clean;
         };
 
+        // Advanced Military-Grade XSS, SQL & Script Injection Defense Shield
         (function secureGlobalShield() {
             try {
+                // Disable right-click inspection if desired, or sanitize parameters
                 const params = new URLSearchParams(window.location.search);
                 params.forEach((value, key) => {
                     if (/<script|javascript:|onerror=|onload=|eval\(|document\.cookie|document\.domain|alert\(/i.test(value)) {
@@ -916,35 +1000,13 @@
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                 });
+
+                // Prevent common iframe clickjacking attacks
+                if (window.self !== window.top) {
+                    window.top.location = window.self.location;
+                }
             } catch(e) {}
         })();
-
-        // International Standard PWA Install Trigger & Prompt Handler
-        let deferredPrompt;
-        const pwaHeaderBtn = document.getElementById('pwaInstallHeaderBtn');
-        const sidebarInstallBtn = document.getElementById('sidebarInstallBtn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            if (pwaHeaderBtn) pwaHeaderBtn.classList.remove('hidden');
-        });
-
-        const triggerPWAInstall = async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    console.log('User accepted the Zynqra install prompt');
-                }
-                deferredPrompt = null;
-            } else {
-                alert('আপনার ব্রাউজার থেকে অ্যাপটি সরাসরি ইনস্টল করতে ব্রাউজারের মেনু (⋮) এ ক্লিক করে "Install app" বা "Add to Home screen" সিলেক্ট করুন!');
-            }
-        };
-
-        if (pwaHeaderBtn) pwaHeaderBtn.addEventListener('click', triggerPWAInstall);
-        if (sidebarInstallBtn) sidebarInstallBtn.addEventListener('click', triggerPWAInstall);
     </script>
 
     <!-- PWA Service Worker Registration Script -->
