@@ -159,17 +159,8 @@ function setupPWAInstallHandlers() {
         }
     }
 
-    if (pwaHeaderBtn) {
-        pwaHeaderBtn.addEventListener('click', triggerPWAInstall);
-    }
-    if (sidebarInstallBtn) {
-        sidebarInstallBtn.addEventListener('click', triggerPWAInstall);
-    }
-
-    window.addEventListener('appinstalled', (evt) => {
-        console.log('Zynqra was successfully installed');
-        if (pwaHeaderBtn) pwaHeaderBtn.style.display = 'none';
-    });
+    if (pwaHeaderBtn) pwaHeaderBtn.addEventListener('click', triggerPWAInstall);
+    if (sidebarInstallBtn) sidebarInstallBtn.addEventListener('click', triggerPWAInstall);
 }
 
 // --- Dynamic AdSense & Admin Banner Integration ---
@@ -187,17 +178,13 @@ function loadDynamicAds() {
 
 function setupQuickUploadButton() {
     const quickUploadBtn = document.getElementById('quickUploadHeaderBtn');
-    if (quickUploadBtn) {
-        quickUploadBtn.onclick = () => switchPage('upload');
-    }
+    if (quickUploadBtn) quickUploadBtn.onclick = () => switchPage('home');
 }
 
 function setupShortsModalClose() {
     const closeBtn = document.getElementById('closeShortsSheetBtn');
     const sheet = document.getElementById('shortsModalSheet');
-    if (closeBtn && sheet) {
-        closeBtn.onclick = () => sheet.classList.add('hidden');
-    }
+    if (closeBtn && sheet) closeBtn.onclick = () => sheet.classList.add('hidden');
 }
 
 function setupFirebaseAuthState() {
@@ -242,9 +229,7 @@ function setupFirebaseAuthState() {
 
 function setupGoogleAuth() {
     document.addEventListener('click', (e) => {
-        if (e.target.closest('#googleLoginBtn')) {
-            triggerGoogleLogin();
-        }
+        if (e.target.closest('#googleLoginBtn')) triggerGoogleLogin();
     });
 
     const logoutBtn = document.getElementById('logoutSidebarBtn');
@@ -284,7 +269,6 @@ function triggerGoogleLogin() {
     auth.signInWithPopup(provider).then((result) => {
         showToast('Successfully Logged in as ' + sanitizeHTML(result.user.displayName) + '!');
     }).catch((error) => {
-        console.error("Google Auth Error:", error);
         showToast('Login Failed: ' + sanitizeHTML(error.message), 'error');
     });
 }
@@ -324,12 +308,7 @@ function setupNavigation() {
     }
 
     const logoHome = document.getElementById('logoHome');
-    if (logoHome) {
-        logoHome.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchPage('home');
-        });
-    }
+    if (logoHome) logoHome.onclick = (e) => { e.preventDefault(); switchPage('home'); };
 
     const viewAllShortsBtn = document.getElementById('viewAllShortsBtn');
     if (viewAllShortsBtn) viewAllShortsBtn.onclick = () => switchPage('shorts');
@@ -338,11 +317,43 @@ function setupNavigation() {
     if (headerMessengerBtn) headerMessengerBtn.onclick = () => switchPage('messenger');
 }
 
+// --- Smart Header & Bottom Bar Visibility Controller based on Active Page ---
+function handlePageHeaderVisibility(pageId) {
+    const topHeader = document.getElementById('topHeaderNavbar');
+    const bottomNav = document.getElementById('bottomNavbar');
+    
+    if (pageId === 'messenger' || pageId === 'shorts') {
+        // Hide top global header for Messenger and Shorts to avoid double headers
+        if (topHeader) {
+            topHeader.classList.add('header-hidden');
+            topHeader.style.display = 'none';
+        }
+        // Ensure bottom navigation bar remains visible on Shorts and Messenger for quick access back to Home
+        if (bottomNav) {
+            bottomNav.classList.remove('nav-hidden');
+            bottomNav.style.display = 'flex';
+        }
+    } else {
+        if (topHeader) {
+            topHeader.style.display = 'flex';
+            topHeader.classList.remove('header-hidden');
+        }
+        if (bottomNav) {
+            bottomNav.style.display = 'flex';
+            bottomNav.classList.remove('nav-hidden');
+        }
+    }
+}
+
+// --- Page Switcher with Full-Screen Shorts & Messenger Header Auto-Hider ---
 function switchPage(pageId) {
     document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
     const target = document.getElementById(`page-${pageId}`);
     if (target) target.classList.remove('hidden');
     
+    // Call header visibility controller
+    handlePageHeaderVisibility(pageId);
+
     if (pageId !== 'shorts') {
         document.querySelectorAll('.shorts-slide video').forEach(v => {
             v.pause();
@@ -468,9 +479,7 @@ async function notifyFollowers(creatorEmail, notificationData) {
                 targetId: notificationData.targetId || ''
             });
         });
-    } catch (e) {
-        console.error("Error notifying followers:", e);
-    }
+    } catch (e) {}
 }
 
 function loadPostsFeed() {
@@ -573,7 +582,7 @@ window.commentOnPost = function(postId) {
     });
 };
 
-// --- Home Feed Engine ---
+// --- Home Feed Engine (Professional YouTube List Layout) ---
 async function loadHomeFeed(category = 'all') {
     db.collection("videos").orderBy("date", "desc").onSnapshot(async (snapshot) => {
         const grid = document.getElementById('videoGrid');
@@ -602,7 +611,7 @@ async function loadHomeFeed(category = 'all') {
             videos.sort((a, b) => {
                 const scoreA = (userFavCategories.includes(a.category) ? 10 : 0) + (b.likes || 0) * 3 + (b.views || 0);
                 const scoreB = (userFavCategories.includes(b.category) ? 10 : 0) + (a.likes || 0) * 3 + (a.views || 0);
-                return scoreB - scoreA || new Date(b.date) - new Date(a.date);
+                return scoreB - scoreA || new Date(b.date) - new Date(b.date);
             });
             filtered = videos.filter(v => v.aspectRatio !== '9:16');
         } else {
@@ -626,25 +635,25 @@ async function loadHomeFeed(category = 'all') {
 
         filtered.forEach(video => {
             const card = document.createElement('div');
-            card.className = 'bg-dark-800 border border-dark-700 rounded-3xl overflow-hidden shadow-lg hover:border-brand-cyan transition cursor-pointer flex flex-col group';
+            card.className = 'bg-dark-900 border border-dark-700/80 rounded-2xl overflow-hidden shadow-md hover:border-brand-cyan transition cursor-pointer flex flex-col sm:flex-row group mb-4';
             
             const thumbContent = video.thumbnailUrl 
-                ? `<img src="${sanitizeHTML(video.thumbnailUrl)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">`
-                : `<video src="${sanitizeHTML(video.videoUrl)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300 preload="metadata"></video>`;
+                ? `<img src="${sanitizeHTML(video.thumbnailUrl)}" class="w-full sm:w-64 aspect-video object-cover group-hover:scale-105 transition duration-300">`
+                : `<video src="${sanitizeHTML(video.videoUrl)}" class="w-full sm:w-64 aspect-video object-cover group-hover:scale-105 transition duration-300" preload="metadata"></video>`;
 
             card.innerHTML = `
-                <div class="relative aspect-video bg-black overflow-hidden">
+                <div class="relative bg-black shrink-0 overflow-hidden">
                     ${thumbContent}
-                    <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[9px] px-2 py-0.5 rounded-md font-bold">${sanitizeHTML(video.aspectRatio || '16:9')}</span>
+                    <span class="absolute bottom-2 right-2 bg-black/80 text-white text-[9px] px-2 py-0.5 rounded-md font-bold">${sanitizeHTML(video.date || '2026')}</span>
                 </div>
-                <div class="p-3.5 flex space-x-3 flex-1">
-                    <img src="${sanitizeHTML(video.creatorAvatar)}" class="w-8 h-8 rounded-full object-cover border border-dark-600">
+                <div class="p-3.5 flex space-x-3 flex-1 items-start">
+                    <img src="${sanitizeHTML(video.creatorAvatar)}" class="w-9 h-9 rounded-full object-cover border border-dark-600 shrink-0 cursor-pointer" onclick="event.stopPropagation(); openExternalProfile('${sanitizeHTML(video.creatorEmail)}')">
                     <div class="flex-1 space-y-1">
-                        <h3 class="font-bold text-white text-xs line-clamp-2">${sanitizeHTML(video.title)}</h3>
-                        <div class="flex items-center space-x-1 text-[10px] text-gray-400">
+                        <h3 class="font-bold text-white text-xs sm:text-sm line-clamp-2 group-hover:text-brand-cyan transition">${sanitizeHTML(video.title)}</h3>
+                        <div class="flex items-center space-x-1 text-[11px] text-gray-400">
                             <span>${sanitizeHTML(video.creatorName)}</span>
                         </div>
-                        <p class="text-[9px] text-gray-500">${formatNumber(video.views || 0)} views • ${sanitizeHTML(video.date)}</p>
+                        <p class="text-[10px] text-gray-500">${formatNumber(video.views || 0)} views • ${sanitizeHTML(video.date)}</p>
                     </div>
                 </div>
             `;
@@ -887,9 +896,7 @@ function setupOfflineDownloadsUI() {
 
     const shortsModal = document.getElementById('shortsSettingsModal');
     const closeShortsModal = document.getElementById('closeShortsSettingsModal');
-    if (closeShortsModal && shortsModal) {
-        closeShortsModal.onclick = () => shortsModal.classList.add('hidden');
-    }
+    if (closeShortsModal && shortsModal) closeShortsModal.onclick = () => shortsModal.classList.add('hidden');
 
     const shortsOptSaveBtn = document.getElementById('shortsOptSaveBtn');
     if (shortsOptSaveBtn) {
@@ -1027,12 +1034,15 @@ function loadShortsFeed() {
             slide.innerHTML = `
                 <video src="${sanitizeHTML(short.videoUrl)}" loop playsinline webkit-playsinline class="w-full h-full object-cover"></video>
                 
-                <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent p-4 pb-24 flex flex-col justify-between pointer-events-none">
-                    <div class="flex justify-between items-center pointer-events-auto">
-                        <span class="bg-amber-400 text-dark-900 font-bold text-[10px] px-3 py-1 rounded-full shadow-lg">Zynqra Short</span>
-                        <button onclick="openShortsSettings('${sanitizeHTML(short.id)}')" class="bg-dark-800/80 hover:bg-dark-700 text-white w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shadow"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                    </div>
-                    
+                <!-- Top Header for Shorts with ⇨ Home Button & Title -->
+                <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-30 pointer-events-auto bg-gradient-to-b from-black/80 to-transparent">
+                    <button onclick="switchPage('home')" class="flex items-center space-x-1.5 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-xs font-bold border border-white/20 transition cursor-pointer shadow-lg">
+                        <span>Home</span> <i class="fa-solid fa-arrow-right text-brand-cyan"></i> <span>⇨</span>
+                    </button>
+                    <span class="text-xs font-bold text-white tracking-wider bg-black/40 px-3 py-1 rounded-full border border-white/10">Zynqra Shorts</span>
+                </div>
+
+                <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent p-4 pb-24 flex flex-col justify-end pointer-events-none">
                     <div class="space-y-2 pointer-events-auto pb-4 pr-20">
                         <div class="flex items-center space-x-3 flex-wrap gap-y-2">
                             <div class="flex items-center space-x-2.5 cursor-pointer group" onclick="openExternalProfile('${sanitizeHTML(short.creatorEmail)}')">
@@ -1050,6 +1060,7 @@ function loadShortsFeed() {
                     </div>
                 </div>
 
+                <!-- Right Side Action Bar with Three-Dot Settings Button Placed Directly Under Share -->
                 <div class="absolute right-3 bottom-24 flex flex-col items-center space-y-4 pointer-events-auto z-20">
                     <button onclick="likeShort('${sanitizeHTML(short.id)}', ${short.likes || 0})" class="bg-dark-800/90 hover:bg-dark-700 text-white w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-xl border border-dark-600 cursor-pointer transition transform active:scale-90">
                         <i class="fa-solid fa-heart text-brand-red text-sm"></i>
@@ -1062,6 +1073,10 @@ function loadShortsFeed() {
                     <button onclick="navigator.clipboard.writeText(window.location.origin + window.location.pathname + '?v=' + '${sanitizeHTML(short.id)}'); showToast('Short share link copied!');" class="bg-dark-800/90 hover:bg-dark-700 text-white w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-xl border border-dark-600 cursor-pointer transition transform active:scale-90">
                         <i class="fa-solid fa-share text-emerald-400 text-sm"></i>
                         <span class="text-[8px] font-bold mt-0.5">Share</span>
+                    </button>
+                    <button onclick="openShortsSettings('${sanitizeHTML(short.id)}')" class="bg-dark-800/90 hover:bg-dark-700 text-white w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-xl border border-dark-600 cursor-pointer transition transform active:scale-90" title="Shorts Settings">
+                        <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                        <span class="text-[8px] font-bold mt-0.5">Menu</span>
                     </button>
                 </div>
             `;
@@ -1368,12 +1383,23 @@ async function openVideoModal(video) {
         };
     }
 
+    // --- Three-Dot Menu Setup under Share / below ---
+    const threeDotBtn = document.getElementById('modalThreeDotBtn');
+    const threeDotMenu = document.getElementById('modalThreeDotMenu');
+    if (threeDotBtn && threeDotMenu) {
+        threeDotBtn.onclick = (e) => {
+            e.stopPropagation();
+            threeDotMenu.classList.toggle('hidden');
+        };
+    }
+
     const shareBtn = document.getElementById('modalShareBtn');
     if (shareBtn) {
         shareBtn.onclick = () => {
             const uniqueVideoLink = window.location.origin + window.location.pathname + '?v=' + video.id;
             navigator.clipboard.writeText(uniqueVideoLink).then(() => {
                 showToast('Unique Video Share Link copied to clipboard!');
+                if (threeDotMenu) threeDotMenu.classList.add('hidden');
             });
         };
     }
@@ -1546,6 +1572,7 @@ function loadFriendsList() {
     });
 }
 
+// --- Messenger Contacts & Message Request System ---
 function loadMessengerContacts(filterQuery = '') {
     db.collection("users").get().then((snapshot) => {
         const trayContainer = document.getElementById('chatContactsHorizontalList');
@@ -1573,6 +1600,7 @@ function loadMessengerContacts(filterQuery = '') {
 
         users.forEach(user => {
             const unreadCount = parseInt(localStorage.getItem(`unread_${currentUser?.email}_${user.email}`) || '0');
+            const lastMsg = localStorage.getItem(`lastmsg_${[currentUser?.email, user.email].sort().join('_')}`) || `Click to chat with ${user.name.split(' ')[0]}`;
             
             const trayItem = document.createElement('div');
             trayItem.className = 'flex flex-col items-center cursor-pointer shrink-0 relative group';
@@ -1601,9 +1629,9 @@ function loadMessengerContacts(filterQuery = '') {
                     <div class="flex items-center justify-between">
                         <h4 class="font-bold text-white text-xs truncate">${sanitizeHTML(user.name)}</h4>
                     </div>
-                    <p class="text-[11px] text-gray-400 truncate mt-0.5">Click to chat with ${sanitizeHTML(user.name.split(' ')[0])}</p>
+                    <p class="text-[11px] text-gray-400 truncate mt-0.5">${sanitizeHTML(lastMsg)}</p>
                 </div>
-                ${unreadCount > 0 ? `<span class="bg-brand-cyan text-dark-900 text-[10px] font-bold px-2 py-0.5 rounded-full">${unreadCount}</span>` : ''}
+                ${unreadCount > 0 ? `<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${unreadCount}</span>` : ''}
             `;
             inboxItem.onclick = () => {
                 localStorage.setItem(`unread_${currentUser?.email}_${user.email}`, '0');
@@ -1628,9 +1656,21 @@ function selectActiveChatContact(user) {
     const header = document.getElementById('activeChatHeader');
     const chatOptionsBtn = document.getElementById('chatOptionsBtn');
     const chatPane = document.getElementById('messengerChatPane');
+    const requestBanner = document.getElementById('messageRequestBanner');
+    const inputBarWrapper = document.getElementById('messengerInputBarWrapper');
     
-    if (chatOptionsBtn) chatOptionsBtn.classList.remove('hidden');
     if (chatPane) chatPane.classList.remove('translate-x-full');
+
+    const requestKey = `req_accepted_${currentUser?.email}_${user.email}`;
+    const isRequestAccepted = localStorage.getItem(requestKey) === 'true';
+
+    if (!isRequestAccepted) {
+        if (requestBanner) requestBanner.classList.remove('hidden');
+        if (inputBarWrapper) inputBarWrapper.classList.add('hidden');
+    } else {
+        if (requestBanner) requestBanner.classList.add('hidden');
+        if (inputBarWrapper) inputBarWrapper.classList.remove('hidden');
+    }
 
     header.innerHTML = `
         <div class="flex items-center space-x-3">
@@ -1681,6 +1721,38 @@ function setupMessengerUIEnhancements() {
             selectActiveChatContact(activeChatContact);
         };
     }
+
+    const acceptBtn = document.getElementById('acceptRequestBtn');
+    const deleteBtn = document.getElementById('deleteRequestBtn');
+    const requestBanner = document.getElementById('messageRequestBanner');
+    const inputBarWrapper = document.getElementById('messengerInputBarWrapper');
+
+    if (acceptBtn) {
+        acceptBtn.onclick = () => {
+            if (!activeChatContact || !currentUser) return;
+            localStorage.setItem(`req_accepted_${currentUser.email}_${activeChatContact.email}`, 'true');
+            if (requestBanner) requestBanner.classList.add('hidden');
+            if (inputBarWrapper) inputBarWrapper.classList.remove('hidden');
+            showToast('Message request accepted!');
+        };
+    }
+
+    if (deleteBtn) {
+        deleteBtn.onclick = () => {
+            if (requestBanner) requestBanner.classList.add('hidden');
+            showToast('Message request ignored.', 'error');
+            document.getElementById('messengerChatPane').classList.add('translate-x-full');
+        };
+    }
+
+    // --- Messenger Header Search Toggle Button Integration ---
+    const messengerHeaderSearchBtn = document.getElementById('messengerHeaderSearchBtn');
+    const messengerSearchInput = document.getElementById('messengerSearchInput');
+    if (messengerHeaderSearchBtn && messengerSearchInput) {
+        messengerHeaderSearchBtn.onclick = () => {
+            messengerSearchInput.focus();
+        };
+    }
 }
 
 function renderChatMessages() {
@@ -1689,9 +1761,7 @@ function renderChatMessages() {
     box.innerHTML = '';
     if (!activeChatContact || !currentUser) return;
 
-    if (unsubscribeChat) {
-        unsubscribeChat();
-    }
+    if (unsubscribeChat) unsubscribeChat();
 
     const chatId = [currentUser.email, activeChatContact.email].sort().join('_');
     unsubscribeChat = db.collection("chats").doc(chatId).collection("messages").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
@@ -1790,9 +1860,7 @@ function setupProfileEditModal() {
         };
     }
 
-    if (closeBtn && modal) {
-        closeBtn.onclick = () => modal.classList.add('hidden');
-    }
+    if (closeBtn && modal) closeBtn.onclick = () => modal.classList.add('hidden');
 
     if (saveBtn) {
         saveBtn.onclick = async () => {
@@ -1993,14 +2061,17 @@ function setupEventListeners() {
 
             const chatId = [currentUser.email, activeChatContact.email].sort().join('_');
             const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const messagePreviewText = text || (imageUrl ? '[Image Attachment]' : '');
 
             db.collection("chats").doc(chatId).collection("messages").add({
                 sender: currentUser.email,
-                text: text || (imageUrl ? '[Image Attachment]' : ''),
+                text: messagePreviewText,
                 imageUrl: imageUrl,
                 time: timeNow,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+
+            localStorage.setItem(`lastmsg_${chatId}`, messagePreviewText);
 
             const unreadKey = `unread_${activeChatContact.email}_${currentUser.email}`;
             const currentUnread = parseInt(localStorage.getItem(unreadKey) || '0');
@@ -2015,6 +2086,7 @@ function setupEventListeners() {
             });
 
             chatInput.value = '';
+            loadMessengerContacts();
         };
 
         sendBtn.onclick = () => sendAction();
